@@ -21,13 +21,18 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <signal.h>
 #include <pthread.h>
 #include <curl/curl.h>
+#include <sys/stat.h>
+#include "satorinow/satorinow.h"
 #include "satorinow/cli.h"
+#include "satorinow/encrypt.h"
 
-#define BANNER "**************************************************"
+static char config_dir[PATH_MAX];
+
 
 /**
  * void cleanup(int signum)
@@ -51,10 +56,33 @@ void cleanup(int signum) {
 int main() {
 
     printf("\n%s\n** SatoriNOW\n** Copyright (C) 2025 Design Pattern Solutions Inc\n%s\n", BANNER, BANNER);
+
+    /**
+     *  Create configuration directory, if necessary
+     */
+    const char *home = getenv("HOME");
+    if (!home) {
+        fprintf(stderr, "HOME environment variable must be set.\n");
+        perror("getenv HOME");
+        exit(EXIT_FAILURE);
+    }
+    snprintf(config_dir, sizeof(config_dir), "%s/.satorinow", home);
+
+    struct stat st;
+    if (stat(config_dir, &st) != 0) {
+        if (mkdir(config_dir, 0700) != 0) {
+            char tbuf[128 + PATH_MAX];
+            snprintf(tbuf, sizeof(tbuf), "failed to create %s", config_dir);
+            perror(tbuf);
+            exit(EXIT_FAILURE);
+        }
+    }
+
     /**
      * Initialize Curl
      */
     curl_global_init(CURL_GLOBAL_DEFAULT);
+    satnow_encrypt_init(config_dir);
 
     /**
      * Initialize shutdown signal handlers

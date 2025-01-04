@@ -1,7 +1,7 @@
 # Variables
 CC = gcc
 CFLAGS = -Wall -Wextra -O2 -I$(INC_DIR)
-LDFLAGS = -lcurl -lpthread
+LDFLAGS = -lcurl -lpthread -lcrypto
 SATORINOW_SRC_DIR = src/satorinow
 SATORICLI_SRC_DIR = src/satoricli
 INC_DIR = src/include
@@ -11,7 +11,8 @@ INSTALL_DIR = /usr/local/satori-now/bin
 
 # Source files
 SATORINOW_SRC = $(SATORINOW_SRC_DIR)/main.c \
-	$(SATORINOW_SRC_DIR)/cli.c
+	$(SATORINOW_SRC_DIR)/cli.c \
+	$(SATORINOW_SRC_DIR)/encrypt.c \
 
 SATORICLI_SRC = $(SATORICLI_SRC_DIR)/main.c
 
