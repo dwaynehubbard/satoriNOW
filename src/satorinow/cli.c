@@ -131,12 +131,7 @@ void satnow_cli_stop() {
 }
 
 int satnow_cli_register(struct satnow_cli_op *op) {
-    struct satnow_cli_op *p = op_list_head;
     struct satnow_cli_op *new_op = NULL;
-
-    while (p != NULL) {
-        p = p->next;
-    }
 
     new_op = (struct satnow_cli_op *)calloc(1, sizeof(struct satnow_cli_op));
     if (!new_op) {
@@ -168,12 +163,35 @@ int satnow_cli_register(struct satnow_cli_op *op) {
         new_op->syntax = strdup(op->syntax);
     }
 
-    if (p) {
-        p->next = new_op;
-    } else {
-        p = new_op;
+    if (op_list_head == NULL || strcmp(new_op->command[0], op_list_head->command[0]) < 0) {
+        new_op->next = op_list_head;
+        op_list_head = new_op;
+        op_list_size++;
+        printf("[FIRST]CLI Operation %s\n", new_op->syntax);
+        return 0;
     }
+
+    struct satnow_cli_op *p = op_list_head;
+
+    while (p->next != NULL && strcmp(new_op->command[0], p->next->command[0]) > 0) {
+        p = p->next;
+    }
+    new_op->next = p->next;
+    p->next = new_op;
+
     op_list_size++;
     printf("CLI Operation %s\n", new_op->syntax);
     return 0;
+}
+
+void satnow_print_cli_operations() {
+    struct satnow_cli_op *current = op_list_head;
+    while (current) {
+        printf("Command: %s", current->command[0]);
+        if (current->command[1]) printf(" %s", current->command[1]);
+        if (current->command[2]) printf(" %s", current->command[2]);
+        printf(", Description: %s, Syntax: %s\n",
+               current->description, current->syntax);
+        current = current->next;
+    }
 }

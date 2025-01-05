@@ -48,4 +48,6 @@ int satnow_cli_register(struct satnow_cli_op *op);
 void *satnow_cli_start();
 void satnow_cli_stop();
 
+void satnow_print_cli_operations();
+
 #endif //SATORINOW_CLI_H

@@ -49,6 +49,60 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
         , cli_neuron_unlock
     },
+    {
+            { "list", NULL }
+        , "List available commands."
+        , "Usage: list"
+        , 0
+        , 0
+        , 0
+        , cli_neuron_unlock
+    },
+    {
+            { "neuron", "status", NULL }
+        , "Generate an authenticated session on the specified neuron."
+        , "Usage: neuron stats"
+        , 0
+        , 0
+        , 0
+        , cli_neuron_unlock
+    },
+    {
+            { "neuron", "show", "details", NULL }
+        , "Generate an authenticated session on the specified neuron."
+        , "Usage: neuron show details"
+        , 0
+        , 0
+        , 0
+        , cli_neuron_unlock
+    },
+    {
+            { "neuron", "show", "cpu", NULL }
+        , "Generate an authenticated session on the specified neuron."
+        , "Usage: neuron show cpu"
+        , 0
+        , 0
+        , 0
+        , cli_neuron_unlock
+    },
+    {
+            { "neuron", "lock", NULL }
+        , "Generate an authenticated session on the specified neuron."
+        , "Usage: neuron lock (<ip>:<port>|<nickname>)"
+        , 0
+        , 0
+        , 0
+        , cli_neuron_unlock
+    },
+    {
+            { "unlock", NULL }
+        , "Generate an authenticated session on the specified neuron."
+        , "Usage: unlock"
+        , 0
+        , 0
+        , 0
+        , cli_neuron_unlock
+    },
 };
 
 int satnow_register_satori_cli_operations() {
