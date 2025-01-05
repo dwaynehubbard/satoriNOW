@@ -20,6 +20,7 @@
  * THE SOFTWARE.
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -31,6 +32,9 @@
 #define BUFFER_SIZE 256
 
 static int server_fd = -1;
+
+static struct satnow_cli_op *op_list_head = NULL;
+static int op_list_size = 0;
 
 // Command handlers
 static void show_help(int client_fd) {
@@ -124,4 +128,48 @@ void satnow_cli_stop() {
         close(server_fd);
         unlink(SOCKET_PATH);
     }
+}
+
+int satnow_cli_register(struct satnow_cli_op *op) {
+    struct satnow_cli_op *p = op_list_head;
+    struct satnow_cli_op *new_op = NULL;
+
+    while (p != NULL) {
+        p = p->next;
+    }
+
+    new_op = (struct satnow_cli_op *)calloc(1, sizeof(struct satnow_cli_op));
+    if (!new_op) {
+        perror("calloc struct satnow_cli_op");
+        return -1;
+    }
+
+    if (!op->handler) {
+        free(new_op);
+        new_op = NULL;
+        perror("CLI operation missing handler");
+        return -1;
+    }
+
+    new_op->handler = op->handler;
+
+    for (int i = 0; i < SATNOW_CLI_MAX_COMMAND_WORDS; i++) {
+        if (!op->command[i]) {
+            break;
+        }
+        new_op->command[i] = strdup(op->command[i]);
+    }
+
+    if (op->description) {
+        new_op->description = strdup(op->description);
+    }
+
+    if (op->syntax) {
+        new_op->syntax = strdup(op->syntax);
+    }
+
+    p->next = new_op;
+    op_list_size++;
+    printf("CLI Operation %2d: %s\n", op_list_size, new_op->syntax);
+    return 0;
 }

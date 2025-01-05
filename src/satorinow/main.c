@@ -88,7 +88,7 @@ int main() {
     /**
      * Register Command Line Operations
      */
-    register_cli_satori_operations();
+    satnow_register_satori_cli_operations();
 
     /**
      * Initialize shutdown signal handlers

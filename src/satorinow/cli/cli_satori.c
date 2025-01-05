@@ -27,8 +27,8 @@
 
 static struct satnow_cli_op * cli_list_head = NULL;
 
-static int cli_neuron_register(int fd, int argc, char *argv[]);
-static int cli_neuron_unlock(int fd, int argc, char *argv[]);
+static int cli_neuron_register(struct satnow_cli_args request);
+static int cli_neuron_unlock(struct satnow_cli_args request);
 
 static char show_cli_neuron_register[] = "Usage: neuron register <ip>:<port> [<nickname>]\n";
 static char show_cli_neuron_unlock[] = "Usage: neuron unlock (<ip>:<port>|<nickname>)\n";
@@ -48,9 +48,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
     },
 };
 
-int register_cli_satori_operations() {
-    printf("register_cli_satori_operations\n");
-
+int satnow_register_satori_cli_operations() {
     for (int i = 0; i < sizeof(satori_cli_operations) / sizeof(satori_cli_operations[0]); i++) {
         printf("Registering CLI operation:");
         for (int j = 0; j < SATNOW_CLI_MAX_COMMAND_WORDS; j++) {
@@ -60,13 +58,14 @@ int register_cli_satori_operations() {
             printf(" %s", satori_cli_operations[i].command[j]);
         }
         printf("\n");
+        satnow_cli_register(&satori_cli_operations[i]);
     }
 }
 
-static int cli_neuron_register(int fd, int argc, char *argv[]) {
+static int cli_neuron_register(struct satnow_cli_args request) {
     return 0;
 }
 
-static int cli_neuron_unlock(int fd, int argc, char *argv[]) {
+static int cli_neuron_unlock(struct satnow_cli_args request) {
     return 0;
 }

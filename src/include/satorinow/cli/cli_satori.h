@@ -22,6 +22,6 @@
 #ifndef CLI_SATORI_H
 #define CLI_SATORI_H
 
-int register_cli_satori_operations();
+int satnow_register_satori_cli_operations();
 
 #endif //CLI_SATORI_H

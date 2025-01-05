@@ -32,14 +32,14 @@ struct satnow_cli_args {
 };
 
 struct satnow_cli_op {
-    const char * const command[SATNOW_CLI_MAX_COMMAND_WORDS];
-    const char * const description;
+    const char * command[SATNOW_CLI_MAX_COMMAND_WORDS];
+    const char * description;
     const char * syntax;
     char * user_command;
     int user_command_length;
     int user_command_argc;
 
-    char *(*handler)(struct satnow_cli_op *op, int cmd, struct satnow_cli_args *argv);
+    char *(*handler)(struct satnow_cli_args request);
     struct satnow_cli_op *next;
 };
 
