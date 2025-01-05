@@ -29,6 +29,7 @@
 #include <sys/stat.h>
 #include "satorinow/satorinow.h"
 #include "satorinow/cli.h"
+#include "satorinow/cli/cli_satori.h"
 #include "satorinow/encrypt.h"
 
 static char config_dir[PATH_MAX];
@@ -79,10 +80,15 @@ int main() {
     }
 
     /**
-     * Initialize Curl
+     * Initialize Modules
      */
     curl_global_init(CURL_GLOBAL_DEFAULT);
     satnow_encrypt_init(config_dir);
+
+    /**
+     * Register Command Line Operations
+     */
+    register_cli_satori_operations();
 
     /**
      * Initialize shutdown signal handlers
@@ -94,7 +100,7 @@ int main() {
      * Create CLI socket thread
      */
     pthread_t cli_thread;
-    if (pthread_create(&cli_thread, NULL, satnow_cli_exec, NULL) != 0) {
+    if (pthread_create(&cli_thread, NULL, satnow_cli_start, NULL) != 0) {
         perror("pthread_create");
         exit(EXIT_FAILURE);
     }

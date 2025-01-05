@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Design Pattern Solutions Inc
+* Copyright (c) 2025 Design Pattern Solutions Inc
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -19,33 +19,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef SATORINOW_CLI_H
-#define SATORINOW_CLI_H
+#ifndef CLI_SATORI_H
+#define CLI_SATORI_H
 
-#define SATNOW_CLI_MAX_COMMAND_WORDS 8
+int register_cli_satori_operations();
 
-struct satnow_cli_args {
-    const int fd;
-    const int argc;
-    const char * const *argv;
-    struct satnow_cli_op *ref;
-};
-
-struct satnow_cli_op {
-    const char * const command[SATNOW_CLI_MAX_COMMAND_WORDS];
-    const char * const description;
-    const char * syntax;
-    char * user_command;
-    int user_command_length;
-    int user_command_argc;
-
-    char *(*handler)(struct satnow_cli_op *op, int cmd, struct satnow_cli_args *argv);
-    struct satnow_cli_op *next;
-};
-
-int satnow_cli_register(struct satnow_cli_op *op);
-
-void *satnow_cli_start();
-void satnow_cli_stop();
-
-#endif //SATORINOW_CLI_H
+#endif //CLI_SATORI_H

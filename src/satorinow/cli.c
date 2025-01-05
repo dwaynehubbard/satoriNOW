@@ -42,7 +42,7 @@ static void show_help(int client_fd) {
  * Main processing loop for the CLI socket engine
  * @return
  */
-void *satnow_cli_exec() {
+void *satnow_cli_start() {
     struct sockaddr_un server_addr;
     char buffer[BUFFER_SIZE];
     int client_fd;
