@@ -168,8 +168,12 @@ int satnow_cli_register(struct satnow_cli_op *op) {
         new_op->syntax = strdup(op->syntax);
     }
 
-    p->next = new_op;
+    if (p) {
+        p->next = new_op;
+    } else {
+        p = new_op;
+    }
     op_list_size++;
-    printf("CLI Operation %2d: %s\n", op_list_size, new_op->syntax);
+    printf("CLI Operation %s\n", new_op->syntax);
     return 0;
 }

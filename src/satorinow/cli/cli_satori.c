@@ -27,30 +27,33 @@
 
 static struct satnow_cli_op * cli_list_head = NULL;
 
-static int cli_neuron_register(struct satnow_cli_args request);
-static int cli_neuron_unlock(struct satnow_cli_args request);
-
-static char show_cli_neuron_register[] = "Usage: neuron register <ip>:<port> [<nickname>]\n";
-static char show_cli_neuron_unlock[] = "Usage: neuron unlock (<ip>:<port>|<nickname>)\n";
+static char *cli_neuron_register(struct satnow_cli_args request);
+static char *cli_neuron_unlock(struct satnow_cli_args request);
 
 static struct satnow_cli_op satori_cli_operations[] = {
     {
         { "neuron", "register", NULL }
-        , cli_neuron_register
         , "Register a protected neuron."
-        , show_cli_neuron_unlock
+        , "Usage: neuron register <ip>:<port> [<nickname>]"
+        , 0
+        , 0
+        , 0
+        , cli_neuron_register
     },
     {
         { "neuron", "unlock", NULL }
-        , cli_neuron_unlock
         , "Generate an authenticated session on the specified neuron."
-        , show_cli_neuron_unlock
+        , "Usage: neuron unlock (<ip>:<port>|<nickname>)"
+        , 0
+        , 0
+        , 0
+        , cli_neuron_unlock
     },
 };
 
 int satnow_register_satori_cli_operations() {
     for (int i = 0; i < sizeof(satori_cli_operations) / sizeof(satori_cli_operations[0]); i++) {
-        printf("Registering CLI operation:");
+        printf("CLI Operation:");
         for (int j = 0; j < SATNOW_CLI_MAX_COMMAND_WORDS; j++) {
             if (satori_cli_operations[i].command[j] == NULL) {
                 break;
@@ -60,12 +63,13 @@ int satnow_register_satori_cli_operations() {
         printf("\n");
         satnow_cli_register(&satori_cli_operations[i]);
     }
-}
-
-static int cli_neuron_register(struct satnow_cli_args request) {
     return 0;
 }
 
-static int cli_neuron_unlock(struct satnow_cli_args request) {
+static char *cli_neuron_register(struct satnow_cli_args request) {
+    return 0;
+}
+
+static char *cli_neuron_unlock(struct satnow_cli_args request) {
     return 0;
 }
