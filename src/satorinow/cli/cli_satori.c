@@ -25,10 +25,8 @@
 #include <unistd.h>
 #include "satorinow/cli.h"
 
-static struct satnow_cli_op * cli_list_head = NULL;
-
-static char *cli_neuron_register(struct satnow_cli_args request);
-static char *cli_neuron_unlock(struct satnow_cli_args request);
+static char *cli_neuron_register(struct satnow_cli_args *request);
+static char *cli_neuron_unlock(struct satnow_cli_args *request);
 
 static struct satnow_cli_op satori_cli_operations[] = {
     {
@@ -39,6 +37,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
         , 0
         , cli_neuron_register
+        , 0
     },
     {
         { "neuron", "unlock", NULL }
@@ -48,6 +47,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
         , 0
         , cli_neuron_unlock
+        , 0
     },
     {
             { "list", NULL }
@@ -57,6 +57,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
         , 0
         , cli_neuron_unlock
+        , 0
     },
     {
             { "neuron", "status", NULL }
@@ -66,6 +67,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
         , 0
         , cli_neuron_unlock
+        , 0
     },
     {
             { "neuron", "show", "details", NULL }
@@ -75,6 +77,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
         , 0
         , cli_neuron_unlock
+        , 0
     },
     {
             { "neuron", "show", "cpu", NULL }
@@ -84,6 +87,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
         , 0
         , cli_neuron_unlock
+        , 0
     },
     {
             { "neuron", "lock", NULL }
@@ -93,6 +97,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
         , 0
         , cli_neuron_unlock
+        , 0
     },
     {
             { "unlock", NULL }
@@ -102,6 +107,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
         , 0
         , cli_neuron_unlock
+        , 0
     },
 };
 
@@ -120,10 +126,12 @@ int satnow_register_satori_cli_operations() {
     return 0;
 }
 
-static char *cli_neuron_register(struct satnow_cli_args request) {
+static char *cli_neuron_register(struct satnow_cli_args *request) {
+    printf("EXECUTE: cli_neuron_register\n");
     return 0;
 }
 
-static char *cli_neuron_unlock(struct satnow_cli_args request) {
+static char *cli_neuron_unlock(struct satnow_cli_args *request) {
+    printf("EXECUTE: cli_neuron_unlock\n");
     return 0;
 }

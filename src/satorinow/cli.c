@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/socket.h>
@@ -29,16 +30,51 @@
 #include "satorinow/cli.h"
 
 #define SOCKET_PATH "/tmp/satorinow.socket"
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 1024
 
 static int server_fd = -1;
-
 static struct satnow_cli_op *op_list_head = NULL;
 static int op_list_size = 0;
 
-// Command handlers
-static void show_help(int client_fd) {
-    write(client_fd, "Available commands: help, unlock, status\n", 41);
+static char *cli_show_help(struct satnow_cli_args *request);
+
+static struct satnow_cli_op satori_cli_operations[] = {
+        {
+                { "help", NULL }
+                , "Display supported commands"
+                , "Usage: help"
+                , 0
+                , 0
+                , 0
+                , cli_show_help
+                , 0
+        },
+};
+
+
+/**
+ * show_help(int client_fd)
+ * Display the available CLI operations
+ * @param client_fd
+ */
+static char *cli_show_help(struct satnow_cli_args *request) {
+    printf("EXECUTE: cli_show_help\n");
+    return 0;
+}
+
+int satnow_register_core_cli_operations() {
+    for (int i = 0; i < sizeof(satori_cli_operations) / sizeof(satori_cli_operations[0]); i++) {
+        printf("Core CLI Operation:");
+        for (int j = 0; j < SATNOW_CLI_MAX_COMMAND_WORDS; j++) {
+            if (satori_cli_operations[i].command[j] == NULL) {
+                break;
+            }
+            printf(" %s", satori_cli_operations[i].command[j]);
+        }
+        printf("\n");
+        satnow_cli_register(&satori_cli_operations[i]);
+    }
+    return 0;
 }
 
 /**
@@ -102,12 +138,14 @@ void *satnow_cli_start() {
         memset(buffer, 0, BUFFER_SIZE);
         read(client_fd, buffer, BUFFER_SIZE);
 
+        satnow_cli_execute(client_fd, buffer, BUFFER_SIZE);
+
         /**
          * Handle commands and client response
          */
+         /*
         if (strncmp(buffer, "help", 4) == 0) {
             printf("help\n");
-            show_help(client_fd);
         } else if (strncmp(buffer, "status", 6) == 0) {
             printf("status\n");
             write(client_fd, "Daemon is running.\n", 20);
@@ -115,6 +153,7 @@ void *satnow_cli_start() {
             printf("unknown: %s\n", buffer);
             write(client_fd, "Unknown command.\n", 18);
         }
+          */
 
         close(client_fd);
     }
@@ -130,6 +169,14 @@ void satnow_cli_stop() {
     }
 }
 
+/**
+ * int satnow_cli_register(struct satnow_cli_op)
+ * Perform a deep copy of the specified CLI operation and add the operation
+ * to the CLI operation linked-list in alphabetic order
+ *
+ * @param op
+ * @return
+ */
 int satnow_cli_register(struct satnow_cli_op *op) {
     struct satnow_cli_op *new_op = NULL;
 
@@ -195,3 +242,67 @@ void satnow_print_cli_operations() {
         current = current->next;
     }
 }
+
+int satnow_cli_execute(int client_fd, const char *buffer, int length) {
+    char *buffer_copy = strndup(buffer, length);
+    char *token = NULL;
+    char *words[SATNOW_CLI_MAX_COMMAND_WORDS];
+    int word_count = 0;
+
+    /**
+     * Split buffer into words
+     */
+    token = strtok(buffer_copy, " \t\n");
+    while (token && word_count < SATNOW_CLI_MAX_COMMAND_WORDS) {
+        words[word_count++] = token;
+        token = strtok(NULL, " \t\n");
+    }
+
+    /**
+     * Find the best match
+     */
+    struct satnow_cli_op *current = op_list_head;
+    struct satnow_cli_op *best_match = NULL;
+    int best_match_score = 0;
+
+    while (current) {
+        int match_score = 0;
+
+        for (int i = 0; current->command[i] && i < word_count; ++i) {
+            if (!strcasecmp(words[i], current->command[i])) {
+                ++match_score;
+            } else {
+                break;
+            }
+        }
+
+        if (match_score > best_match_score) {
+            best_match = current;
+            best_match_score = match_score;
+        }
+
+        current = current->next;
+    }
+
+    if (best_match) {
+        printf("Best match found: ");
+        for (int i = 0; best_match->command[i]; ++i) {
+            printf("%s ", best_match->command[i]);
+        }
+        printf("\n");
+
+        struct satnow_cli_args *args = calloc(1, sizeof(struct satnow_cli_args));
+        args->fd = client_fd;
+        args->argc = word_count;
+        args->argv = words;
+        args->ref = best_match;
+
+        best_match->handler(args);
+    } else {
+        printf("Match not found\n");
+    }
+
+    free(buffer_copy);
+    return 0;
+}
+

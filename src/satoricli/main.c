@@ -28,7 +28,7 @@
 #include <sys/un.h>
 
 #define SOCKET_PATH "/tmp/satorinow.socket"
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 1024
 
 int main(int argc, char *argv[]) {
     int client_fd;

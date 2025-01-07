@@ -25,25 +25,28 @@
 #define SATNOW_CLI_MAX_COMMAND_WORDS 8
 
 struct satnow_cli_args {
-    const int fd;
-    const int argc;
-    const char * const *argv;
+    int fd;
+    int argc;
+    char * *argv;
     struct satnow_cli_op *ref;
 };
 
 struct satnow_cli_op {
-    const char * command[SATNOW_CLI_MAX_COMMAND_WORDS];
-    const char * description;
-    const char * syntax;
-    char * user_command;
+    const char *command[SATNOW_CLI_MAX_COMMAND_WORDS];
+    const char *description;
+    const char *syntax;
+    char *user_command;
     int user_command_length;
     int user_command_argc;
 
-    char *(*handler)(struct satnow_cli_args request);
+    char *(*handler)(struct satnow_cli_args *request);
     struct satnow_cli_op *next;
 };
 
+
 int satnow_cli_register(struct satnow_cli_op *op);
+int satnow_cli_execute(int client_fd, const char *buffer, int length);
+int satnow_register_core_cli_operations();
 
 void *satnow_cli_start();
 void satnow_cli_stop();

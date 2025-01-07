@@ -88,6 +88,7 @@ int main() {
     /**
      * Register Command Line Operations
      */
+    satnow_register_core_cli_operations();
     satnow_register_satori_cli_operations();
     satnow_print_cli_operations();
 

@@ -1,10 +1,10 @@
 # Variables
 CC = gcc
-CFLAGS = -Wall -Wextra -O2 -I$(INC_DIR)
-LDFLAGS = -lcurl -lpthread -lcrypto
+CFLAGS = -Wall -Wextra -O2 $(INC_DIR)
+LDFLAGS = -L/opt/homebrew/lib -lcurl -lpthread -lcrypto -lssl
 SATORINOW_SRC_DIR = src/satorinow
 SATORICLI_SRC_DIR = src/satoricli
-INC_DIR = src/include
+INC_DIR = -Isrc/include -I/opt/homebrew/include
 BUILD_DIR = build
 BIN_DIR = bin
 INSTALL_DIR = /usr/local/satori-now/bin
