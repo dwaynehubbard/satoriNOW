@@ -76,8 +76,7 @@ static char *cli_show_help(struct satnow_cli_args *request) {
 }
 
 int satnow_register_core_cli_operations() {
-    for (int i = 0; i < sizeof(satori_cli_operations) / sizeof(satori_cli_operations[0]); i++) {
-        printf("Core CLI Operation:");
+    for (int i = 0; i < (int)(sizeof(satori_cli_operations) / sizeof(satori_cli_operations[0])); i++) {
         for (int j = 0; j < SATNOW_CLI_MAX_COMMAND_WORDS; j++) {
             if (satori_cli_operations[i].command[j] == NULL) {
                 break;
@@ -99,6 +98,7 @@ void *satnow_cli_start() {
     struct sockaddr_un server_addr;
     char buffer[BUFFER_SIZE];
     int server_fd, client_fd;
+    ssize_t rx;
 
     // Create the Unix Domain Socket
     if ((server_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
@@ -137,10 +137,12 @@ void *satnow_cli_start() {
 
         // Read the command
         memset(buffer, 0, BUFFER_SIZE);
-        read(client_fd, buffer, BUFFER_SIZE);
-        printf("RX: [%s]\n", buffer);
+        rx = read(client_fd, buffer, BUFFER_SIZE);
 
-        satnow_cli_execute(client_fd, buffer);
+        if (rx > 0) {
+            printf("RX: [%s]\n", buffer);
+            satnow_cli_execute(client_fd, buffer);
+        }
 
         close(client_fd);
     }
@@ -248,12 +250,8 @@ static void send_header(int client_fd, int op_code, int bytes_to_come) {
 
 void satnow_cli_send_response(int client_fd, int op_code, const char *message) {
     int bytes_to_come = message ? strlen(message) : 0;
-    printf("PREPARING: [%s] (op_code: %d, bytes: %d)\n", message, op_code, bytes_to_come);
 
-    // Send the header
     send_header(client_fd, op_code, bytes_to_come);
-
-    // Send the message, if any
     if (bytes_to_come > 0) {
         printf("%04d%04d::%s", op_code, bytes_to_come, message);
         if (write(client_fd, message, bytes_to_come) == -1) {

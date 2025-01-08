@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 Design Pattern Solutions Inc
+ * Copyright (c) 2025 Design Pattern Solutions Inc
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,8 +20,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef SATORINOW_H
+#define SATORINOW_H
 
 #define SATNOW_CLI_MAX_COMMAND_WORDS 8
 #define BANNER "**************************************************"
@@ -37,4 +37,4 @@ enum OpCode {
  CLI_INPUT_ECHO_OFF = 3
 };
 
-#endif //COMMON_H
+#endif //SATORINOW_H

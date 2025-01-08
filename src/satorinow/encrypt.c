@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 Design Pattern Solutions Inc
+ * Copyright (c) 2025 Design Pattern Solutions Inc
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,36 +36,6 @@ static char encrypted_dir_path[PATH_MAX];
 static void handleErrors() {
     fprintf(stderr, "An error occurred.\n");
     exit(1);
-}
-
-static void disable_echo() {
-    struct termios term;
-
-    if (tcgetattr(STDIN_FILENO, &term) == -1) {
-        perror("tcgetattr");
-        exit(EXIT_FAILURE);
-    }
-
-    term.c_lflag &= ~ECHO; // Disable echo
-    if (tcsetattr(STDIN_FILENO, TCSANOW, &term) == -1) {
-        perror("tcsetattr");
-        exit(EXIT_FAILURE);
-    }
-}
-
-static void enable_echo() {
-    struct termios term;
-
-    if (tcgetattr(STDIN_FILENO, &term) == -1) {
-        perror("tcgetattr");
-        exit(EXIT_FAILURE);
-    }
-
-    term.c_lflag |= ECHO; // Enable echo
-    if (tcsetattr(STDIN_FILENO, TCSANOW, &term) == -1) {
-        perror("tcsetattr");
-        exit(EXIT_FAILURE);
-    }
 }
 
 void satnow_encrypt_init(const char* config_dir) {

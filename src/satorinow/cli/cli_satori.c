@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 Design Pattern Solutions Inc
+ * Copyright (c) 2025 Design Pattern Solutions Inc
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,17 +51,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
     },
     {
-            { "list", NULL }
-        , "List available commands."
-        , "Usage: list"
-        , 0
-        , 0
-        , 0
-        , cli_neuron_unlock
-        , 0
-    },
-    {
-            { "neuron", "status", NULL }
+        { "neuron", "status", NULL }
         , "Generate an authenticated session on the specified neuron."
         , "Usage: neuron stats"
         , 0
@@ -71,7 +61,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
     },
     {
-            { "neuron", "show", "details", NULL }
+        { "neuron", "show", "details", NULL }
         , "Generate an authenticated session on the specified neuron."
         , "Usage: neuron show details"
         , 0
@@ -81,7 +71,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
     },
     {
-            { "neuron", "show", "cpu", NULL }
+        { "neuron", "show", "cpu", NULL }
         , "Generate an authenticated session on the specified neuron."
         , "Usage: neuron show cpu"
         , 0
@@ -91,7 +81,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
     },
     {
-            { "neuron", "lock", NULL }
+        { "neuron", "lock", NULL }
         , "Generate an authenticated session on the specified neuron."
         , "Usage: neuron lock (<ip>:<port>|<nickname>)"
         , 0
@@ -101,7 +91,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
     },
     {
-            { "unlock", NULL }
+        { "unlock", NULL }
         , "Generate an authenticated session on the specified neuron."
         , "Usage: unlock"
         , 0
@@ -113,8 +103,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
 };
 
 int satnow_register_satori_cli_operations() {
-    for (int i = 0; i < sizeof(satori_cli_operations) / sizeof(satori_cli_operations[0]); i++) {
-        printf("CLI Operation:");
+    for (int i = 0; i < (int)(sizeof(satori_cli_operations) / sizeof(satori_cli_operations[0])); i++) {
         for (int j = 0; j < SATNOW_CLI_MAX_COMMAND_WORDS; j++) {
             if (satori_cli_operations[i].command[j] == NULL) {
                 break;
@@ -127,21 +116,28 @@ int satnow_register_satori_cli_operations() {
     return 0;
 }
 
+/**
+ * static char *cli_neuron_register(struct satnow_cli_args *request)
+ * Request the neuron password from the client and encrypt in a file for future use
+ *
+ * @param request
+ * @return
+ */
 static char *cli_neuron_register(struct satnow_cli_args *request) {
     char buffer[BUFFER_SIZE];
     ssize_t rx;
 
-    printf("EXECUTE: cli_neuron_register\n");
     satnow_cli_send_response(request->fd, CLI_INPUT_ECHO_OFF, "Password:");
     memset(buffer, 0, BUFFER_SIZE);
     rx = read(request->fd, buffer, BUFFER_SIZE);
-    buffer[rx - 1] = '\0';
-    printf("\nRX: [%s]\n", buffer);
-    satnow_cli_send_response(request->fd, CLI_DONE, "Neuron Registered.\n");
+    if (rx > 0) {
+        buffer[rx - 1] = '\0';
+        satnow_cli_send_response(request->fd, CLI_DONE, "Neuron Registered.\n");
+    }
     return 0;
 }
 
 static char *cli_neuron_unlock(struct satnow_cli_args *request) {
-    printf("EXECUTE: cli_neuron_unlock\n");
+    printf("EXECUTE: cli_neuron_unlock (%d)\n", request->fd);
     return 0;
 }
