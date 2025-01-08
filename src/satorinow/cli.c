@@ -27,10 +27,9 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <arpa/inet.h>
+#include <satorinow.h>
 #include "satorinow/cli.h"
-
-#define SOCKET_PATH "/tmp/satorinow.socket"
-#define BUFFER_SIZE 1024
 
 static int server_fd = -1;
 static struct satnow_cli_op *op_list_head = NULL;
@@ -58,7 +57,20 @@ static struct satnow_cli_op satori_cli_operations[] = {
  * @param client_fd
  */
 static char *cli_show_help(struct satnow_cli_args *request) {
-    printf("EXECUTE: cli_show_help\n");
+    char response[BUFFER_SIZE];
+    struct satnow_cli_op *current = op_list_head;
+
+    while (current) {
+        snprintf(response, sizeof(response), "%s", current->command[0]);
+        for (int i = 1; current->command[i]; i++) {
+            snprintf(&response[strlen(response)], sizeof(response) - strlen(response) - 1, " %s", current->command[i]);
+        }
+        snprintf(&response[strlen(response)], sizeof(response) - strlen(response) - 1, " - %s\n", current->description);
+        send_response(request->fd, CLI_MORE, response);
+        current = current->next;
+    }
+    snprintf(response, BUFFER_SIZE, "\n");
+    send_response(request->fd, CLI_DONE, response);
     return 0;
 }
 
@@ -85,26 +97,20 @@ int satnow_register_core_cli_operations() {
 void *satnow_cli_start() {
     struct sockaddr_un server_addr;
     char buffer[BUFFER_SIZE];
-    int client_fd;
+    int server_fd, client_fd;
 
-    /**
-     * Create the Unix Domain Socket
-     */
+    // Create the Unix Domain Socket
     if ((server_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         perror("satorinow socket");
         pthread_exit(NULL);
     }
 
-    /**
-     * Configure socket address
-     */
+    // Configure socket address
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sun_family = AF_UNIX;
     strncpy(server_addr.sun_path, SOCKET_PATH, sizeof(server_addr.sun_path) - 1);
 
-    /**
-     * Bind the socket
-     */
+    // Bind the socket
     unlink(SOCKET_PATH);
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
         perror("satorinow bind");
@@ -112,9 +118,7 @@ void *satnow_cli_start() {
         pthread_exit(NULL);
     }
 
-    /**
-     * Listen for connections
-     */
+    // Listen for connections
     if (listen(server_fd, 5) == -1) {
         perror("satorinow listen");
         close(server_fd);
@@ -124,42 +128,24 @@ void *satnow_cli_start() {
     printf("SatoriNOW listening for commands\n");
 
     while (1) {
-        /**
-         * Accept new connections
-         */
+        // Accept new connections
         if ((client_fd = accept(server_fd, NULL, NULL)) == -1) {
             perror("satorinow accept");
             continue;
         }
 
-        /**
-         * Read the command
-         */
+        // Read the command
         memset(buffer, 0, BUFFER_SIZE);
         read(client_fd, buffer, BUFFER_SIZE);
 
-        satnow_cli_execute(client_fd, buffer, BUFFER_SIZE);
-
-        /**
-         * Handle commands and client response
-         */
-         /*
-        if (strncmp(buffer, "help", 4) == 0) {
-            printf("help\n");
-        } else if (strncmp(buffer, "status", 6) == 0) {
-            printf("status\n");
-            write(client_fd, "Daemon is running.\n", 20);
-        } else {
-            printf("unknown: %s\n", buffer);
-            write(client_fd, "Unknown command.\n", 18);
-        }
-          */
+        satnow_cli_execute(client_fd, buffer);
 
         close(client_fd);
     }
 
     pthread_exit(NULL);
 }
+
 
 // Stop the CLI socket
 void satnow_cli_stop() {
@@ -243,8 +229,38 @@ void satnow_print_cli_operations() {
     }
 }
 
-int satnow_cli_execute(int client_fd, const char *buffer, int length) {
-    char *buffer_copy = strndup(buffer, length);
+
+void send_header(int client_fd, int op_code, int bytes_to_come) {
+    uint32_t op_code_network = htonl(op_code);       // Convert to network byte order
+    uint32_t bytes_to_come_network = htonl(bytes_to_come); // Convert to network byte order
+
+    char header[HEADER_SIZE];
+    memcpy(header, &op_code_network, 4);            // Copy OP_CODE to the header
+    memcpy(header + 4, &bytes_to_come_network, 4);  // Copy BYTES-TO-COME to the header
+
+    // Send the fixed-size header
+    if (write(client_fd, header, HEADER_SIZE) == -1) {
+        perror("Error sending header");
+    }
+}
+
+void send_response(int client_fd, int op_code, const char *message) {
+    int bytes_to_come = message ? strlen(message) : 0;
+
+    // Send the header
+    send_header(client_fd, op_code, bytes_to_come);
+
+    // Send the message, if any
+    if (bytes_to_come > 0) {
+        printf("%04d%04d::%s", op_code, bytes_to_come, message);
+        if (write(client_fd, message, bytes_to_come) == -1) {
+            perror("Error sending response");
+        }
+    }
+}
+
+void satnow_cli_execute(int client_fd, const char *buffer) {
+    char *buffer_copy = strdup(buffer);
     char *token = NULL;
     char *words[SATNOW_CLI_MAX_COMMAND_WORDS];
     int word_count = 0;

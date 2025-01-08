@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+#include <satorinow.h>
 
 static char encrypted_dir_path[PATH_MAX];
 

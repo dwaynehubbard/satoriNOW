@@ -22,7 +22,7 @@
 #ifndef SATORINOW_CLI_H
 #define SATORINOW_CLI_H
 
-#define SATNOW_CLI_MAX_COMMAND_WORDS 8
+#include <satorinow.h>
 
 struct satnow_cli_args {
     int fd;
@@ -45,12 +45,15 @@ struct satnow_cli_op {
 
 
 int satnow_cli_register(struct satnow_cli_op *op);
-int satnow_cli_execute(int client_fd, const char *buffer, int length);
+void satnow_cli_execute(int client_fd, const char *command);
 int satnow_register_core_cli_operations();
 
 void *satnow_cli_start();
 void satnow_cli_stop();
 
 void satnow_print_cli_operations();
+
+void send_header(int client_fd, int op_code, int bytes_to_come);
+void send_response(int client_fd, int op_code, const char *message);
 
 #endif //SATORINOW_CLI_H

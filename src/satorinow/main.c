@@ -27,7 +27,7 @@
 #include <pthread.h>
 #include <curl/curl.h>
 #include <sys/stat.h>
-#include "satorinow/satorinow.h"
+#include <satorinow.h>
 #include "satorinow/cli.h"
 #include "satorinow/cli/cli_satori.h"
 #include "satorinow/encrypt.h"

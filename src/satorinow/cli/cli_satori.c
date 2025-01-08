@@ -21,8 +21,8 @@
  */
 
 #include <stdio.h>
-#include <string.h>
 #include <unistd.h>
+#include <satorinow.h>
 #include "satorinow/cli.h"
 
 static char *cli_neuron_register(struct satnow_cli_args *request);

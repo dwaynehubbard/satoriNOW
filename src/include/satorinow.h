@@ -19,12 +19,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef SATORINOW_H
-#define SATORINOW_H
+
+#ifndef COMMON_H
+#define COMMON_H
 
 #define BANNER "**************************************************"
 
 #define CONFIG_DIR "~/.satorinow"
 #define PATH_MAX 1024
 
-#endif //SATORINOW_H
+#define SATNOW_CLI_MAX_COMMAND_WORDS 8
+
+#define SOCKET_PATH "/tmp/satorinow.socket"
+#define BUFFER_SIZE 1024
+#define HEADER_SIZE 8 // 4 bytes for OP_CODE, 4 bytes for BYTES-TO-COME
+
+enum OpCode {
+ CLI_DONE = 0,
+ CLI_MORE = 1,
+ CLI_INPUT = 2,
+ CLI_INPUT_ECHO_OFF = 3
+};
+
+#endif //COMMON_H
