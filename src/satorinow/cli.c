@@ -35,6 +35,7 @@ static int server_fd = -1;
 static struct satnow_cli_op *op_list_head = NULL;
 static int op_list_size = 0;
 
+static void send_header(int client_fd, int op_code, int bytes_to_come);
 static char *cli_show_help(struct satnow_cli_args *request);
 
 static struct satnow_cli_op satori_cli_operations[] = {
@@ -66,11 +67,11 @@ static char *cli_show_help(struct satnow_cli_args *request) {
             snprintf(&response[strlen(response)], sizeof(response) - strlen(response) - 1, " %s", current->command[i]);
         }
         snprintf(&response[strlen(response)], sizeof(response) - strlen(response) - 1, " - %s\n", current->description);
-        send_response(request->fd, CLI_MORE, response);
+        satnow_cli_send_response(request->fd, CLI_MORE, response);
         current = current->next;
     }
     snprintf(response, BUFFER_SIZE, "\n");
-    send_response(request->fd, CLI_DONE, response);
+    satnow_cli_send_response(request->fd, CLI_DONE, response);
     return 0;
 }
 
@@ -137,6 +138,7 @@ void *satnow_cli_start() {
         // Read the command
         memset(buffer, 0, BUFFER_SIZE);
         read(client_fd, buffer, BUFFER_SIZE);
+        printf("RX: [%s]\n", buffer);
 
         satnow_cli_execute(client_fd, buffer);
 
@@ -230,7 +232,7 @@ void satnow_print_cli_operations() {
 }
 
 
-void send_header(int client_fd, int op_code, int bytes_to_come) {
+static void send_header(int client_fd, int op_code, int bytes_to_come) {
     uint32_t op_code_network = htonl(op_code);       // Convert to network byte order
     uint32_t bytes_to_come_network = htonl(bytes_to_come); // Convert to network byte order
 
@@ -244,8 +246,9 @@ void send_header(int client_fd, int op_code, int bytes_to_come) {
     }
 }
 
-void send_response(int client_fd, int op_code, const char *message) {
+void satnow_cli_send_response(int client_fd, int op_code, const char *message) {
     int bytes_to_come = message ? strlen(message) : 0;
+    printf("PREPARING: [%s] (op_code: %d, bytes: %d)\n", message, op_code, bytes_to_come);
 
     // Send the header
     send_header(client_fd, op_code, bytes_to_come);
@@ -319,6 +322,5 @@ void satnow_cli_execute(int client_fd, const char *buffer) {
     }
 
     free(buffer_copy);
-    return 0;
 }
 

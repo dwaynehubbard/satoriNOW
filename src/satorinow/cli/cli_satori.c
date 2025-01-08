@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 #include <satorinow.h>
 #include "satorinow/cli.h"
 
@@ -127,7 +128,16 @@ int satnow_register_satori_cli_operations() {
 }
 
 static char *cli_neuron_register(struct satnow_cli_args *request) {
+    char buffer[BUFFER_SIZE];
+    ssize_t rx;
+
     printf("EXECUTE: cli_neuron_register\n");
+    satnow_cli_send_response(request->fd, CLI_INPUT_ECHO_OFF, "Password:");
+    memset(buffer, 0, BUFFER_SIZE);
+    rx = read(request->fd, buffer, BUFFER_SIZE);
+    buffer[rx - 1] = '\0';
+    printf("\nRX: [%s]\n", buffer);
+    satnow_cli_send_response(request->fd, CLI_DONE, "Neuron Registered.\n");
     return 0;
 }
 

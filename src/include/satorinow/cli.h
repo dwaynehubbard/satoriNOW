@@ -52,8 +52,6 @@ void *satnow_cli_start();
 void satnow_cli_stop();
 
 void satnow_print_cli_operations();
-
-void send_header(int client_fd, int op_code, int bytes_to_come);
-void send_response(int client_fd, int op_code, const char *message);
+void satnow_cli_send_response(int client_fd, int op_code, const char *message);
 
 #endif //SATORINOW_CLI_H

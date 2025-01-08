@@ -23,13 +23,9 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define BANNER "**************************************************"
-
-#define CONFIG_DIR "~/.satorinow"
-#define PATH_MAX 1024
-
 #define SATNOW_CLI_MAX_COMMAND_WORDS 8
-
+#define BANNER "**************************************************"
+#define CONFIG_DIR "~/.satorinow"
 #define SOCKET_PATH "/tmp/satorinow.socket"
 #define BUFFER_SIZE 1024
 #define HEADER_SIZE 8 // 4 bytes for OP_CODE, 4 bytes for BYTES-TO-COME

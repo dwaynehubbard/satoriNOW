@@ -85,34 +85,42 @@ int main(int argc, char *argv[]) {
     }
 
     // Send the command
-    snprintf(buffer, BUFFER_SIZE, "%s", argv[1]);
+    memset(buffer, 0, sizeof(buffer));
+    for (int i = 1; i < argc; i++) {
+        if (i > 1) {
+            snprintf(&buffer[strlen(buffer)], BUFFER_SIZE - strlen(buffer) - 1, " ");
+        }
+        snprintf(&buffer[strlen(buffer)], BUFFER_SIZE - strlen(buffer) - 1, "%s", argv[i]);
+    }
+
     write(client_fd, buffer, strlen(buffer));
 
     // Read responses in a loop
     while (1) {
         // Read the header
         read_fixed_header(client_fd, &op_code, &bytes_to_come);
-        //printf("OP_CODE: %d, BYTES: %d\n", op_code, bytes_to_come);
+        printf("OP_CODE: %d, BYTES: %d\n", op_code, bytes_to_come);
 
         // Process the operation code
         if (op_code == 0) { // CLI_DONE
+            read_message(client_fd, bytes_to_come);
             break;
         } else if (op_code == 1) { // CLI_MORE
             read_message(client_fd, bytes_to_come);
         } else if (op_code == 2) { // CLI_INPUT
             read_message(client_fd, bytes_to_come);
-            printf("Enter input: ");
             memset(buffer, 0, BUFFER_SIZE);
             fgets(buffer, BUFFER_SIZE, stdin);
             write(client_fd, buffer, strlen(buffer));
+            printf("\n");
         } else if (op_code == 3) { // CLI_INPUT_ECHO_OFF
             read_message(client_fd, bytes_to_come);
             disable_echo();
-            printf("Enter input: ");
             memset(buffer, 0, BUFFER_SIZE);
             fgets(buffer, BUFFER_SIZE, stdin);
             enable_echo();
             write(client_fd, buffer, strlen(buffer));
+            printf("\n");
         }
     }
 
