@@ -19,32 +19,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#ifndef REPOSITORY_H
+#define REPOSITORY_H
 
-#ifndef SATORINOW_H
-#define SATORINOW_H
+void satnow_repository_init(const char *config_dir);
+void satnow_repository_append(const char *buffer, int length);
 
-#ifndef TRUE
-#define TRUE 1
-#endif
+int satnow_repository_exists();
+void satnow_repository_password(const char *pass);
 
-#ifndef FALSE
-#define FALSE 0
-#endif
-
-#define SATNOW_CLI_MAX_COMMAND_WORDS 8
-#define BANNER "**************************************************"
-#define CONFIG_DIR "~/.satorinow"
-#define CONFIG_DAT "satorinow.dat"
-#define CONFIG_MAX_PASSWORD 128
-#define SOCKET_PATH "/tmp/satorinow.socket"
-#define BUFFER_SIZE 1024
-#define HEADER_SIZE 8 // 4 bytes for OP_CODE, 4 bytes for BYTES-TO-COME
-
-enum OpCode {
- CLI_DONE = 0,
- CLI_MORE = 1,
- CLI_INPUT = 2,
- CLI_INPUT_ECHO_OFF = 3
-};
-
-#endif //SATORINOW_H
+#endif //REPOSITORY_H

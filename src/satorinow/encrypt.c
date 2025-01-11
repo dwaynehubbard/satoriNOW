@@ -31,15 +31,98 @@
 #include <openssl/rand.h>
 #include <satorinow.h>
 
-static char encrypted_dir_path[PATH_MAX];
+static char encrypted_dat[PATH_MAX];
+static char repository_password[CONFIG_MAX_PASSWORD];
 
 static void handleErrors() {
     fprintf(stderr, "An error occurred.\n");
     exit(1);
 }
 
-void satnow_encrypt_init(const char* config_dir) {
-    snprintf(encrypted_dir_path, sizeof(encrypted_dir_path), "%s", config_dir);
+/**
+ * void satnow_encrypt_derive_mast_key(const char *password, unsigned char *salt, unsigned char *key)
+ * Derive master key using PBKDF2
+ *
+ * @param password
+ * @param salt
+ * @param key
+ */
+void satnow_encrypt_derive_mast_key(const char *password, unsigned char *salt, unsigned char *key) {
+    if (!PKCS5_PBKDF2_HMAC(password, strlen(password), salt, SALT_LEN, ITERATIONS, EVP_sha256(), MASTER_KEY_LEN, key)) {
+        handleErrors();
+    }
+}
+
+/**
+ * void satnow_encrypt_derive_file_key(const unsigned char *master_key, const char *file_id, unsigned char *file_key)
+ * Derive file key using HMAC
+ *
+ * @param master_key
+ * @param file_id
+ * @param file_key
+ */
+void satnow_encrypt_derive_file_key(const unsigned char *master_key, const char *file_id, unsigned char *file_key) {
+    HMAC(EVP_sha256(), master_key, MASTER_KEY_LEN, (unsigned char *)file_id, strlen(file_id), file_key, NULL);
+}
+
+// Encrypt wallet data
+void satnow_encrypt_ciphertext(const unsigned char *plaintext
+    , int plaintext_len
+    , const unsigned char *key
+    , const unsigned char *iv
+    , unsigned char *ciphertext
+    , int *ciphertext_len) {
+
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) handleErrors();
+
+    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv) != 1)
+        handleErrors();
+
+    int len;
+    if (EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len) != 1)
+        handleErrors();
+    *ciphertext_len = len;
+
+    if (EVP_EncryptFinal_ex(ctx, ciphertext + len, &len) != 1)
+        handleErrors();
+    *ciphertext_len += len;
+
+    EVP_CIPHER_CTX_free(ctx);
+}
+
+// Decrypt wallet data
+static void decrypt(const unsigned char *ciphertext, int ciphertext_len,
+             const unsigned char *key, const unsigned char *iv,
+             unsigned char *plaintext, int *plaintext_len) {
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) handleErrors();
+
+    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv) != 1)
+        handleErrors();
+
+    int len;
+    if (EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len) != 1)
+        handleErrors();
+    *plaintext_len = len;
+
+    if (EVP_DecryptFinal_ex(ctx, plaintext + len, &len) != 1)
+        handleErrors();
+    *plaintext_len += len;
+
+    EVP_CIPHER_CTX_free(ctx);
+}
+
+
+void satnow_encrypt_init(const char *config_dir) {
+    snprintf(encrypted_dat, sizeof(encrypted_dat), "%s/%s", config_dir, CONFIG_DAT);
+}
+
+int satnow_encrypt_repository_exists() {
+    if (access(encrypted_dat, F_OK) == 0) {
+        return TRUE;
+    }
+    return FALSE;
 }
 
 
@@ -68,7 +151,7 @@ void satnow_neuron_encrypt(const unsigned char *plaintext
     EVP_CIPHER_CTX_free(ctx);
 }
 
-void decrypt(const unsigned char *ciphertext, int ciphertext_len,
+void satnow_neuron_decrypt(const unsigned char *ciphertext, int ciphertext_len,
              const unsigned char *key, const unsigned char *iv,
              unsigned char *plaintext, int *plaintext_len) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();

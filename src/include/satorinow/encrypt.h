@@ -24,8 +24,23 @@
 
 #define AES_KEYLEN 256 // Key length in bits
 #define AES_BLOCK_SIZE 16 // Block size in bytes
+#define DERIVED_KEY_LEN 32
+#define IV_LEN 16
+#define ITERATIONS 100000
+#define MASTER_KEY_LEN 32
+#define SALT_LEN 16
 
-void satnow_encrypt_init(const char* config_dir);
+void satnow_encrypt_derive_mast_key(const char *password, unsigned char *salt, unsigned char *key);
+void satnow_encrypt_derive_file_key(const unsigned char *master_key, const char *file_id, unsigned char *file_key);
+
+void satnow_encrypt_init(const char *config_dir);
+
+void satnow_encrypt_ciphertext(const unsigned char *plaintext
+    , int plaintext_len
+    , const unsigned char *key
+    , const unsigned char *iv
+    , unsigned char *ciphertext
+    , int *ciphertext_len);
 
 void satnow_neuron_encrypt(const unsigned char *plaintext, int plaintext_len,
              const unsigned char *key, const unsigned char *iv,

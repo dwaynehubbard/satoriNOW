@@ -83,7 +83,7 @@ int main() {
      * Initialize Modules
      */
     curl_global_init(CURL_GLOBAL_DEFAULT);
-    satnow_encrypt_init(config_dir);
+    satnow_repository_init(config_dir);
 
     /**
      * Register Command Line Operations

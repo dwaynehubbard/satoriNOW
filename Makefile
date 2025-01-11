@@ -14,6 +14,7 @@ SATORINOW_SRC = $(SATORINOW_SRC_DIR)/main.c \
 	$(SATORINOW_SRC_DIR)/cli.c \
 	$(SATORINOW_SRC_DIR)/cli/cli_satori.c \
 	$(SATORINOW_SRC_DIR)/encrypt.c \
+	$(SATORINOW_SRC_DIR)/repository.c \
 
 SATORICLI_SRC = $(SATORICLI_SRC_DIR)/main.c
 
