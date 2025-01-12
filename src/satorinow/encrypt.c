@@ -66,11 +66,11 @@ void satnow_encrypt_derive_file_key(const unsigned char *master_key, const char 
 
 // Encrypt wallet data
 void satnow_encrypt_ciphertext(const unsigned char *plaintext
-    , int plaintext_len
+    , unsigned long plaintext_len
     , const unsigned char *key
     , const unsigned char *iv
     , unsigned char *ciphertext
-    , int *ciphertext_len) {
+    , unsigned long *ciphertext_len) {
 
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) handleErrors("EVP_CIPHER_CTX_new");
@@ -78,12 +78,12 @@ void satnow_encrypt_ciphertext(const unsigned char *plaintext
     if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv) != 1)
         handleErrors("EVP_EncryptInit_ex");
 
-    int len;
-    if (EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len) != 1)
+    unsigned long len;
+    if (EVP_EncryptUpdate(ctx, ciphertext, (int *)&len, plaintext, (int)plaintext_len) != 1)
         handleErrors("EVP_EncryptUpdate");
     *ciphertext_len = len;
 
-    if (EVP_EncryptFinal_ex(ctx, ciphertext + len, &len) != 1)
+    if (EVP_EncryptFinal_ex(ctx, ciphertext + len, (int *)&len) != 1)
         handleErrors("EVP_EncryptFinal_ex");
     *ciphertext_len += len;
 
@@ -91,22 +91,22 @@ void satnow_encrypt_ciphertext(const unsigned char *plaintext
 }
 
 // Decrypt wallet data
-void satnow_encrypt_ciphertext2text(const unsigned char *ciphertext, int ciphertext_len,
+void satnow_encrypt_ciphertext2text(const unsigned char *ciphertext, unsigned long ciphertext_len,
              const unsigned char *key, const unsigned char *iv,
-             unsigned char *plaintext, int *plaintext_len) {
+             unsigned char *plaintext, unsigned long *plaintext_len) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) handleErrors("EVP_CIPHER_CTX_new");
 
     if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv) != 1)
         handleErrors("EVP_DecryptInit_ex");
 
-    int len;
-    if (EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len) != 1)
+    unsigned long len;
+    if (EVP_DecryptUpdate(ctx, plaintext, (int *)&len, ciphertext, (int)ciphertext_len) != 1)
         handleErrors("EVP_DecryptUpdate");
     *plaintext_len = len;
 
-    printf("EVP_DecryptFinal_ex(ctx, len: %d), plaintext_len: %d\n", len, *plaintext_len);
-    if (EVP_DecryptFinal_ex(ctx, plaintext + len, &len) != 1)
+    printf("EVP_DecryptFinal_ex(ctx, len: %ld), plaintext_len: %ld\n", len, *plaintext_len);
+    if (EVP_DecryptFinal_ex(ctx, plaintext + len, (int *)&len) != 1)
         handleErrors("EVP_DecryptFinal_ex");
     *plaintext_len += len;
 
@@ -115,11 +115,11 @@ void satnow_encrypt_ciphertext2text(const unsigned char *ciphertext, int ciphert
 
 
 void satnow_neuron_encrypt(const unsigned char *plaintext
-                           , int plaintext_len
+                           , unsigned long plaintext_len
                            , const unsigned char *key
                            , const unsigned char *iv
                            , unsigned char *ciphertext
-                           , int *ciphertext_len) {
+                           , unsigned long *ciphertext_len) {
 
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) handleErrors("EVP_CIPHER_CTX_new");
@@ -139,9 +139,9 @@ void satnow_neuron_encrypt(const unsigned char *plaintext
     EVP_CIPHER_CTX_free(ctx);
 }
 
-void satnow_neuron_decrypt(const unsigned char *ciphertext, int ciphertext_len,
+void satnow_neuron_decrypt(const unsigned char *ciphertext, unsigned long ciphertext_len,
              const unsigned char *key, const unsigned char *iv,
-             unsigned char *plaintext, int *plaintext_len) {
+             unsigned char *plaintext, unsigned long *plaintext_len) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) handleErrors("EVP_CIPHER_CTX_new");
 

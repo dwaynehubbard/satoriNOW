@@ -29,13 +29,13 @@
 #include <openssl/rand.h>
 #include <satorinow.h>
 #include "satorinow/repository.h"
-#include "satorinow/encrypt.h"
 #include "satorinow/cli.h"
 
 static char repository_dat[PATH_MAX];
 static char repository_password[CONFIG_MAX_PASSWORD];
 
 static char *cli_repository_show(struct satnow_cli_args *request);
+static void free_repository_entry_list(struct repository_entry *list);
 
 static struct satnow_cli_op satori_cli_operations[] = {
         {
@@ -50,6 +50,11 @@ static struct satnow_cli_op satori_cli_operations[] = {
         },
 };
 
+/**
+ * int satnow_register_repository_cli_operations()
+ * Register the repository CLI operations
+ * @return
+ */
 int satnow_register_repository_cli_operations() {
     for (int i = 0; i < (int)(sizeof(satori_cli_operations) / sizeof(satori_cli_operations[0])); i++) {
         for (int j = 0; j < SATNOW_CLI_MAX_COMMAND_WORDS; j++) {
@@ -64,14 +69,29 @@ int satnow_register_repository_cli_operations() {
     return 0;
 }
 
+/**
+ * void satnow_repository_init(const char *config_dir)
+ * Initialize the repository module
+ * @param config_dir
+ */
 void satnow_repository_init(const char *config_dir) {
     snprintf(repository_dat, sizeof(repository_dat), "%s/%s", config_dir, CONFIG_DAT);
 }
 
+/**
+ * void satnow_repository_password(const char *pass)
+ * Set the repository password
+ * @param pass
+ */
 void satnow_repository_password(const char *pass) {
     snprintf(repository_password, sizeof(repository_password), "%s", pass);
 }
 
+/**
+ * int satnow_repository_exists()
+ * Check if the repository file exists
+ * @return
+ */
 int satnow_repository_exists() {
     if (access(repository_dat, F_OK) == 0) {
         return TRUE;
@@ -79,143 +99,212 @@ int satnow_repository_exists() {
     return FALSE;
 }
 
+/**
+ * static char *cli_repository_show(struct satnow_cli_args *request)
+ * Display the plain text contents of the repository to the CLI client
+ * @param request
+ * @return
+ */
 static char *cli_repository_show(struct satnow_cli_args *request) {
-    unsigned char salt[SALT_LEN];
-    unsigned char master_key[MASTER_KEY_LEN];
-    unsigned char file_key[DERIVED_KEY_LEN];
-    unsigned char iv[IV_LEN];
-    unsigned char *ciphertext = NULL;
-    unsigned long ciphertext_len;
+    struct repository_entry *list = NULL;
 
     satnow_cli_request_repository_password(request->fd);
 
-    FILE *repo = fopen(repository_dat, "rb");
-    if (!repo) {
-        perror("Error opening repository");
-        return 0;
+    list = satnow_repository_entry_list();
+    if (list) {
+        struct repository_entry *current = list;
+
+        while (current) {
+#ifdef __DEBUG__
+            printf("Entry:\n");
+            printf("  Salt: ");
+            for (int i = 0; i < SALT_LEN; i++) printf("%02x", current->salt[i]);
+            printf("\n");
+            printf("  IV: ");
+            for (int i = 0; i < IV_LEN; i++) printf("%02x", current->iv[i]);
+            printf("\n");
+            printf("  Ciphertext length: %lu\n", current->ciphertext_len);
+#endif
+            if (current->plaintext) {
+                free(current->plaintext);
+            }
+            current->plaintext = malloc(current->ciphertext_len + 1);
+            if (!current->plaintext) {
+                printf("Out of memory\n");
+            }
+            else {
+                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
+                current->plaintext[current->plaintext_len] = '\0';
+#ifdef __DEBUG__
+                printf("  Ciphertext data: %s\n", current->plaintext);
+#endif
+                satnow_cli_send_response(request->fd, CLI_MORE, (const char *)current->plaintext);
+                satnow_cli_send_response(request->fd, CLI_MORE, "\n");
+            }
+            current = current->next;
+        }
+        free_repository_entry_list(list);
     }
-
-    if (fread(salt, 1, SALT_LEN, repo) != SALT_LEN) {
-        perror("Error reading repository salt");
-        fclose(repo);
-        return 0;
-    }
-
-    if (fread(iv, 1, IV_LEN, repo) != IV_LEN) {
-        perror("Error reading repository iv");
-        fclose(repo);
-        return 0;
-    }
-
-    // Determine the ciphertext length
-    fseek(repo, 0, SEEK_END);
-    long file_size = ftell(repo);
-    fseek(repo, SALT_LEN + IV_LEN, SEEK_SET); // Skip salt and IV
-
-    ciphertext_len = file_size - (SALT_LEN + IV_LEN);
-    if (ciphertext_len <= 0) {
-        perror("Invalid ciphertext length");
-        fclose(repo);
-        return 0;
-    }
-
-    // Read ciphertext
-    ciphertext = malloc(ciphertext_len);
-    if (!ciphertext) {
-        perror("Failed to allocate ciphertext memory");
-        fclose(repo);
-        return 0;
-    }
-
-    if (fread(ciphertext, 1, ciphertext_len, repo) != ciphertext_len) {
-        perror("Error reading ciphertext");
-        free(ciphertext);
-        fclose(repo);
-        return 0;
-    }
-    fclose(repo);
-
-    satnow_encrypt_derive_mast_key(repository_password, salt, master_key);
-    satnow_encrypt_derive_file_key(master_key, CONFIG_DAT, file_key);
-
-    // Allocate buffer for plaintext
-    unsigned char *plaintext = malloc(ciphertext_len + 1); // +1 for null terminator
-    if (!plaintext) {
-        perror("Failed to allocate ciphertext plaintext memory");
-        free(ciphertext);
-        return 0;
-    }
-
-    // Decrypt the ciphertext
-    int plaintext_len;
-    satnow_encrypt_ciphertext2text(ciphertext, (int)ciphertext_len, file_key, iv, plaintext, &plaintext_len);
-    plaintext[plaintext_len] = '\0'; // Null-terminate the plaintext
-
-    // Output the decrypted CSV data
-    printf("Decrypted CSV content:\n%s\n", plaintext);
-
-    satnow_cli_send_response(request->fd, CLI_MORE, plaintext);
     satnow_cli_send_response(request->fd, CLI_DONE, "\n");
-
-    // Clean up
-    free(ciphertext);
-    free(plaintext);
-
     return 0;
 }
 
-void satnow_repository_append(const char *buffer, int length) {
-    unsigned char salt[SALT_LEN];
-    unsigned char master_key[MASTER_KEY_LEN];
-    unsigned char file_key[DERIVED_KEY_LEN];
-    unsigned char iv[IV_LEN];
-    unsigned char *ciphertext = calloc(sizeof(unsigned char), length);
-    int ciphertext_len;
+/**
+ * void satnow_repository_entry_append(const char *buffer, int length)
+ * Append the supplied buffer to the end of the repository
+ * @param buffer
+ * @param length
+ */
+void satnow_repository_entry_append(const char *buffer, int length) {
+    struct repository_entry *entry = calloc(1, sizeof(struct repository_entry));
 
-    FILE *repo = fopen(repository_dat, "r+b");
+    FILE *repo = fopen(repository_dat, "a+b");
     if (!repo) {
-        printf("CREATING REPOSITORY\n");
-
-        if (!RAND_bytes(salt, SALT_LEN)) {
-            perror("Error generating salt");
-            return;
-        }
-
-        satnow_encrypt_derive_mast_key(repository_password, salt, master_key);
-        satnow_encrypt_derive_file_key(master_key, CONFIG_DAT, file_key);
-
-        if (!RAND_bytes(iv, IV_LEN)) {
-            perror("Error generating iv");
-            return;
-        }
-
-        repo = fopen(repository_dat, "wb");
-        if (!repo) {
-            perror("Error creating repository");
-            return;
-        }
-
-        fwrite(salt, 1, SALT_LEN, repo);
-        fwrite(iv, 1, IV_LEN, repo);
-    } else {
-        printf("APPENDING REPOSITORY\n");
-
-        fread(salt, 1, SALT_LEN, repo); // Read salt
-        fread(iv, 1, IV_LEN, repo);     // Read IV
-
-        satnow_encrypt_derive_mast_key(repository_password, salt, master_key);
-        satnow_encrypt_derive_file_key(master_key, CONFIG_DAT, file_key);
-
-        // Move the repo pointer to the end for appending
-        fseek(repo, 0, SEEK_END);
+        perror("Fatal repository error");
+        free(entry);
+        return;
     }
 
-    // Encrypt the new CSV line
-    satnow_encrypt_ciphertext((unsigned char *)buffer, length, file_key, iv, ciphertext, &ciphertext_len);
+    if (!RAND_bytes(entry->salt, SALT_LEN)) {
+        perror("Error generating salt");
+        free(entry);
+        return;
+    }
 
-    // Write encrypted line to the file
-    fwrite(ciphertext, 1, ciphertext_len, repo);
+    satnow_encrypt_derive_mast_key(repository_password, entry->salt, entry->master_key);
+    satnow_encrypt_derive_file_key(entry->master_key, CONFIG_DAT, entry->file_key);
+
+    if (!RAND_bytes(entry->iv, IV_LEN)) {
+        perror("Error generating iv");
+        free(entry);
+        return;
+    }
+
+    fwrite(entry->salt, 1, SALT_LEN, repo);
+    fwrite(entry->iv, 1, IV_LEN, repo);
+
+    entry->ciphertext = calloc(sizeof(unsigned char), length);
+    satnow_encrypt_ciphertext((unsigned char *)buffer, length, entry->file_key, entry->iv, entry->ciphertext, &entry->ciphertext_len);
+    fwrite(&entry->ciphertext_len, sizeof(unsigned long), 1, repo);
+    fwrite(entry->ciphertext, 1, entry->ciphertext_len, repo);
+
+    free(entry->ciphertext);
+    free(entry);
     fclose(repo);
+}
 
-    printf("APPENDED [%s] to repository.\n", buffer);
+/**
+ * static void free_repository_entry_list(struct repository_entry *list)
+ * Free the supplied struct repository_entry linked-list
+ * @param list
+ */
+static void free_repository_entry_list(struct repository_entry *list) {
+    if (list) {
+        struct repository_entry *current = list;
+        while (current) {
+            struct repository_entry *next = current->next;
+            if (current->ciphertext) {
+                free(current->ciphertext);
+            }
+            if (current->plaintext) {
+                free(current->plaintext);
+            }
+            free(current);
+            current = next;
+        }
+    }
+}
+
+/**
+ * struct repository_entry *satnow_repository_entry_list()
+ * Return a struct repository_entry linked-list containing the contents of the repository
+ * @return
+ */
+struct repository_entry *satnow_repository_entry_list() {
+    struct repository_entry *head = NULL;
+    struct repository_entry *tail = NULL;
+
+    FILE *repo = fopen(repository_dat, "rb");
+    if (!repo) {
+        perror("Error opening repository file");
+        return NULL;
+    }
+
+    while (1) {
+        struct repository_entry *entry = calloc(1, sizeof(struct repository_entry));
+        if (!entry) {
+            perror("Failed to allocate memory for repository entry");
+            free_repository_entry_list(head);
+            fclose(repo);
+            return NULL;
+        }
+
+        if (fread(entry->salt, 1, SALT_LEN, repo) != SALT_LEN) {
+            if (feof(repo)) {
+                /** End of File */
+                free(entry);
+                break;
+            }
+            perror("Error reading repository salt");
+            free_repository_entry_list(head);
+            free(entry);
+            fclose(repo);
+            return NULL;
+        }
+
+        if (fread(entry->iv, 1, IV_LEN, repo) != IV_LEN) {
+            perror("Error reading repository IV");
+            free_repository_entry_list(head);
+            free(entry);
+            fclose(repo);
+            return NULL;
+        }
+
+        if (fread(&entry->ciphertext_len, sizeof(unsigned long), 1, repo) != 1) {
+            perror("Error reading ciphertext length");
+            free_repository_entry_list(head);
+            free(entry);
+            fclose(repo);
+            return NULL;
+        }
+
+        if (entry->ciphertext_len <= 0) {
+            perror("Invalid ciphertext length");
+            free_repository_entry_list(head);
+            free(entry);
+            fclose(repo);
+            return NULL;
+        }
+
+        entry->ciphertext = malloc(entry->ciphertext_len);
+        if (!entry->ciphertext) {
+            perror("Failed to allocate memory for ciphertext");
+            free_repository_entry_list(head);
+            free(entry);
+            fclose(repo);
+            return NULL;
+        }
+
+        if (fread(entry->ciphertext, 1, entry->ciphertext_len, repo) != entry->ciphertext_len) {
+            perror("Error reading ciphertext");
+            free_repository_entry_list(head);
+            free(entry->ciphertext);
+            free(entry);
+            fclose(repo);
+            return NULL;
+        }
+
+        satnow_encrypt_derive_mast_key(repository_password, entry->salt, entry->master_key);
+        satnow_encrypt_derive_file_key(entry->master_key, CONFIG_DAT, entry->file_key);
+
+        if (!head) {
+            head = entry;
+        } else if (tail) {
+            tail->next = entry;
+        }
+        tail = entry;
+    }
+
+    fclose(repo);
+    return head;
 }

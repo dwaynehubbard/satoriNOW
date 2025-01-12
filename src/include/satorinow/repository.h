@@ -22,11 +22,30 @@
 #ifndef REPOSITORY_H
 #define REPOSITORY_H
 
+#include "satorinow/encrypt.h"
+
 void satnow_repository_init(const char *config_dir);
 int satnow_register_repository_cli_operations();
-void satnow_repository_append(const char *buffer, int length);
+void satnow_repository_entry_append(const char *buffer, int length);
+struct repository_entry *satnow_repository_entry_list();
 
 int satnow_repository_exists();
 void satnow_repository_password(const char *pass);
+
+/**
+ * The repository stores data using the following format:
+ * <salt><iv><ciphertext_length><ciphertext>
+ */
+struct repository_entry {
+    unsigned char salt[SALT_LEN];
+    unsigned char master_key[MASTER_KEY_LEN];
+    unsigned char file_key[DERIVED_KEY_LEN];
+    unsigned char iv[IV_LEN];
+    unsigned char *ciphertext;
+    unsigned long ciphertext_len;
+    unsigned char *plaintext;
+    unsigned long plaintext_len;
+    struct repository_entry *next;
+};
 
 #endif //REPOSITORY_H
