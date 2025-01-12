@@ -23,6 +23,7 @@
 #define REPOSITORY_H
 
 void satnow_repository_init(const char *config_dir);
+int satnow_register_repository_cli_operations();
 void satnow_repository_append(const char *buffer, int length);
 
 int satnow_repository_exists();

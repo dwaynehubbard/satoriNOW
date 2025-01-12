@@ -30,9 +30,39 @@
 #include <satorinow.h>
 #include "satorinow/repository.h"
 #include "satorinow/encrypt.h"
+#include "satorinow/cli.h"
 
 static char repository_dat[PATH_MAX];
 static char repository_password[CONFIG_MAX_PASSWORD];
+
+static char *cli_repository_show(struct satnow_cli_args *request);
+
+static struct satnow_cli_op satori_cli_operations[] = {
+        {
+                { "repository", "show", NULL }
+                , "Display the contents of the repository"
+                , "Usage: repository show"
+                , 0
+                , 0
+                , 0
+                , cli_repository_show
+                , 0
+        },
+};
+
+int satnow_register_repository_cli_operations() {
+    for (int i = 0; i < (int)(sizeof(satori_cli_operations) / sizeof(satori_cli_operations[0])); i++) {
+        for (int j = 0; j < SATNOW_CLI_MAX_COMMAND_WORDS; j++) {
+            if (satori_cli_operations[i].command[j] == NULL) {
+                break;
+            }
+            printf(" %s", satori_cli_operations[i].command[j]);
+        }
+        printf("\n");
+        satnow_cli_register(&satori_cli_operations[i]);
+    }
+    return 0;
+}
 
 void satnow_repository_init(const char *config_dir) {
     snprintf(repository_dat, sizeof(repository_dat), "%s/%s", config_dir, CONFIG_DAT);
@@ -47,6 +77,11 @@ int satnow_repository_exists() {
         return TRUE;
     }
     return FALSE;
+}
+
+static char *cli_repository_show(struct satnow_cli_args *request) {
+    printf("CLI_REPOSITORY_SHOW(%d)\n", request->fd);
+    return 0;
 }
 
 void satnow_repository_append(const char *buffer, int length) {

@@ -31,6 +31,7 @@
 #include "satorinow/cli.h"
 #include "satorinow/cli/cli_satori.h"
 #include "satorinow/encrypt.h"
+#include "satorinow/repository.h"
 
 static char config_dir[PATH_MAX];
 
@@ -90,6 +91,7 @@ int main() {
      */
     satnow_register_core_cli_operations();
     satnow_register_satori_cli_operations();
+    satnow_register_repository_cli_operations();
     satnow_print_cli_operations();
 
     /**
