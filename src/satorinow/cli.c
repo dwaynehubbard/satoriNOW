@@ -30,6 +30,7 @@
 #include <arpa/inet.h>
 #include <satorinow.h>
 #include "satorinow/cli.h"
+#include "satorinow/repository.h"
 
 static int server_fd = -1;
 static struct satnow_cli_op *op_list_head = NULL;
@@ -156,6 +157,21 @@ void satnow_cli_stop() {
     if (server_fd != -1) {
         close(server_fd);
         unlink(SOCKET_PATH);
+    }
+}
+
+void satnow_cli_request_repository_password(int fd) {
+    char buffer[BUFFER_SIZE];
+    ssize_t rx;
+
+    satnow_cli_send_response(fd, CLI_MORE, "You must set a repository password for your sensitive SatoriNOW information.\n");
+    satnow_cli_send_response(fd, CLI_INPUT_ECHO_OFF, "Repository Password:");
+    memset(buffer, 0, BUFFER_SIZE);
+    rx = read(fd, buffer, BUFFER_SIZE);
+    if (rx > 0) {
+        buffer[rx - 1] = '\0';
+        satnow_cli_send_response(fd, CLI_MORE, "\nRemember to store your SatoriNOW repository password in a secure location.\n\n");
+        satnow_repository_password(buffer);
     }
 }
 

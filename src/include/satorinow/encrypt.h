@@ -33,8 +33,6 @@
 void satnow_encrypt_derive_mast_key(const char *password, unsigned char *salt, unsigned char *key);
 void satnow_encrypt_derive_file_key(const unsigned char *master_key, const char *file_id, unsigned char *file_key);
 
-void satnow_encrypt_init(const char *config_dir);
-
 void satnow_encrypt_ciphertext(const unsigned char *plaintext
     , int plaintext_len
     , const unsigned char *key

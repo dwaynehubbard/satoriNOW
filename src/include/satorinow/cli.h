@@ -47,6 +47,7 @@ struct satnow_cli_op {
 int satnow_cli_register(struct satnow_cli_op *op);
 void satnow_cli_execute(int client_fd, const char *command);
 int satnow_register_core_cli_operations();
+void satnow_cli_request_repository_password(int fd);
 
 void *satnow_cli_start();
 void satnow_cli_stop();

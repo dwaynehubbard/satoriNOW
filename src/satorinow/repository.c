@@ -85,29 +85,27 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
     unsigned char file_key[DERIVED_KEY_LEN];
     unsigned char iv[IV_LEN];
     unsigned char *ciphertext = NULL;
-    long ciphertext_len;
+    unsigned long ciphertext_len;
 
-    printf("CLI_REPOSITORY_SHOW(%d)\n", request->fd);
+    satnow_cli_request_repository_password(request->fd);
+
     FILE *repo = fopen(repository_dat, "rb");
     if (!repo) {
         perror("Error opening repository");
         return 0;
     }
-    printf("CLI_REPOSITORY_SHOW(%d), REPO: [%d]\n", request->fd, repo);
 
     if (fread(salt, 1, SALT_LEN, repo) != SALT_LEN) {
         perror("Error reading repository salt");
         fclose(repo);
         return 0;
     }
-    printf("CLI_REPOSITORY_SHOW(%d), SALT: [%s]\n", request->fd, salt);
 
     if (fread(iv, 1, IV_LEN, repo) != IV_LEN) {
         perror("Error reading repository iv");
         fclose(repo);
         return 0;
     }
-    printf("CLI_REPOSITORY_SHOW(%d), IV: [%s]\n", request->fd, iv);
 
     // Determine the ciphertext length
     fseek(repo, 0, SEEK_END);
@@ -120,7 +118,6 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
         fclose(repo);
         return 0;
     }
-    printf("CLI_REPOSITORY_SHOW(%d), LENGTH: [%d]\n", request->fd, ciphertext_len);
 
     // Read ciphertext
     ciphertext = malloc(ciphertext_len);
@@ -128,7 +125,7 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
         perror("Failed to allocate ciphertext memory");
         fclose(repo);
         return 0;
-    }printf("CLI_REPOSITORY_SHOW(%d), LENGTH: [%d] MALLOC'd\n", request->fd, ciphertext_len);
+    }
 
     if (fread(ciphertext, 1, ciphertext_len, repo) != ciphertext_len) {
         perror("Error reading ciphertext");
@@ -140,7 +137,6 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
 
     satnow_encrypt_derive_mast_key(repository_password, salt, master_key);
     satnow_encrypt_derive_file_key(master_key, CONFIG_DAT, file_key);
-    printf("CLI_REPOSITORY_SHOW(%d), LENGTH: [%d] DERIVED\n", request->fd, ciphertext_len);
 
     // Allocate buffer for plaintext
     unsigned char *plaintext = malloc(ciphertext_len + 1); // +1 for null terminator
@@ -149,7 +145,6 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
         free(ciphertext);
         return 0;
     }
-    printf("CLI_REPOSITORY_SHOW(%d), PLAINTEXT MALLOC'd\n", request->fd);
 
     // Decrypt the ciphertext
     int plaintext_len;
@@ -158,6 +153,9 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
 
     // Output the decrypted CSV data
     printf("Decrypted CSV content:\n%s\n", plaintext);
+
+    satnow_cli_send_response(request->fd, CLI_MORE, plaintext);
+    satnow_cli_send_response(request->fd, CLI_DONE, "\n");
 
     // Clean up
     free(ciphertext);

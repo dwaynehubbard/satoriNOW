@@ -32,8 +32,6 @@
 #include <openssl/hmac.h>
 #include <satorinow.h>
 
-static char encrypted_dat[PATH_MAX];
-static char repository_password[CONFIG_MAX_PASSWORD];
 
 static void handleErrors(const char *reason) {
     fprintf(stderr, "An error occurred. (%s)\n", reason);
@@ -113,18 +111,6 @@ void satnow_encrypt_ciphertext2text(const unsigned char *ciphertext, int ciphert
     *plaintext_len += len;
 
     EVP_CIPHER_CTX_free(ctx);
-}
-
-
-void satnow_encrypt_init(const char *config_dir) {
-    snprintf(encrypted_dat, sizeof(encrypted_dat), "%s/%s", config_dir, CONFIG_DAT);
-}
-
-int satnow_encrypt_repository_exists() {
-    if (access(encrypted_dat, F_OK) == 0) {
-        return TRUE;
-    }
-    return FALSE;
 }
 
 

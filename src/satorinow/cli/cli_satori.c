@@ -118,21 +118,6 @@ int satnow_register_satori_cli_operations() {
     return 0;
 }
 
-static void __cli_request_repository_password(int fd) {
-    char buffer[BUFFER_SIZE];
-    ssize_t rx;
-
-    satnow_cli_send_response(fd, CLI_MORE, "You must set a repository password for your sensitive SatoriNOW information.\n");
-    satnow_cli_send_response(fd, CLI_INPUT_ECHO_OFF, "Repository Password:");
-    memset(buffer, 0, BUFFER_SIZE);
-    rx = read(fd, buffer, BUFFER_SIZE);
-    if (rx > 0) {
-        buffer[rx - 1] = '\0';
-        satnow_cli_send_response(fd, CLI_MORE, "\nRemember to store your SatoriNOW repository password in a secure location.\n\n");
-        satnow_repository_password(buffer);
-    }
-}
-
 /**
  * static char *cli_neuron_register(struct satnow_cli_args *request)
  * Request the neuron password from the client and encrypt in a file for future use
@@ -145,7 +130,7 @@ static char *cli_neuron_register(struct satnow_cli_args *request) {
     ssize_t rx;
 
     if (!satnow_repository_exists()) {
-        __cli_request_repository_password(request->fd);
+        satnow_cli_request_repository_password(request->fd);
     }
     satnow_cli_send_response(request->fd, CLI_MORE, "You must add your Neuron password to your SatoriNOW respository.\n");
     satnow_cli_send_response(request->fd, CLI_INPUT_ECHO_OFF, "Neuron Password:");
