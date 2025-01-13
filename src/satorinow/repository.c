@@ -31,6 +31,8 @@
 #include "satorinow/repository.h"
 #include "satorinow/cli.h"
 
+#pragma message ("SATORINOW DEBUG: REPOSITORY")
+
 static char repository_dat[PATH_MAX];
 static char repository_password[CONFIG_MAX_PASSWORD];
 
@@ -115,6 +117,17 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
         struct repository_entry *current = list;
 
         while (current) {
+#ifdef __DEBUG__
+            printf("Entry:\n");
+            printf("  Salt: ");
+            for (int i = 0; i < SALT_LEN; i++) printf("%02x", current->salt[i]);
+            printf("\n");
+            printf("  IV: ");
+            for (int i = 0; i < IV_LEN; i++) printf("%02x", current->iv[i]);
+            printf("\n");
+            printf("  Ciphertext length: %lu\n", current->ciphertext_len);
+#endif
+
             if (current->plaintext) {
                 free(current->plaintext);
             }
@@ -125,6 +138,10 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
             else {
                 satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
                 current->plaintext[current->plaintext_len] = '\0';
+#ifdef __DEBUG__
+                printf("  Ciphertext data: %s\n", current->plaintext);
+#endif
+
                 satnow_cli_send_response(request->fd, CLI_MORE, (const char *)current->plaintext);
                 satnow_cli_send_response(request->fd, CLI_MORE, "\n");
             }
@@ -145,19 +162,26 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
 void satnow_repository_entry_append(const char *buffer, int length) {
     struct repository_entry *entry = calloc(1, sizeof(struct repository_entry));
 
+#if __DEBUG__
+    printf("Opening repository\n");
+#endif
     FILE *repo = fopen(repository_dat, "a+b");
     if (!repo) {
         perror("Fatal repository error");
         free(entry);
         return;
     }
-
+#if __DEBUG__
+    printf("Opened repository\n");
+#endif
     if (!RAND_bytes(entry->salt, SALT_LEN)) {
         perror("Error generating salt");
         free(entry);
         return;
     }
-
+#if __DEBUG__
+    printf("Deriving keys\n");
+#endif
     satnow_encrypt_derive_mast_key(repository_password, entry->salt, entry->master_key);
     satnow_encrypt_derive_file_key(entry->master_key, CONFIG_DAT, entry->file_key);
 
@@ -166,15 +190,21 @@ void satnow_repository_entry_append(const char *buffer, int length) {
         free(entry);
         return;
     }
-
+#if __DEBUG__
+    printf("Writing salt, iv to repository\n");
+#endif
     fwrite(entry->salt, 1, SALT_LEN, repo);
     fwrite(entry->iv, 1, IV_LEN, repo);
-
+#if __DEBUG__
+    printf("Writing ciphertext to repository\n");
+#endif
     entry->ciphertext = calloc(sizeof(unsigned char), length);
     satnow_encrypt_ciphertext((unsigned char *)buffer, length, entry->file_key, entry->iv, entry->ciphertext, &entry->ciphertext_len);
     fwrite(&entry->ciphertext_len, sizeof(unsigned long), 1, repo);
     fwrite(entry->ciphertext, 1, entry->ciphertext_len, repo);
-
+#if __DEBUG__
+    printf("Done appending to repository\n");
+#endif
     free(entry->ciphertext);
     free(entry);
     fclose(repo);
@@ -218,6 +248,9 @@ struct repository_entry *satnow_repository_entry_list() {
     }
 
     while (1) {
+#ifdef __DEBUG__
+        printf("reading repository entry\n");
+#endif
         struct repository_entry *entry = calloc(1, sizeof(struct repository_entry));
         if (!entry) {
             perror("Failed to allocate memory for repository entry");

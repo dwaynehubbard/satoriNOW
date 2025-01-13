@@ -28,6 +28,10 @@
 #include "satorinow/repository.h"
 #include "satorinow/encrypt.h"
 
+#ifdef __DEBUG__
+#pragma message ("SATORINOW DEBUG: CLI SATORI")
+#endif
+
 static char *cli_neuron_register(struct satnow_cli_args *request);
 static char *cli_neuron_unlock(struct satnow_cli_args *request);
 
@@ -130,6 +134,9 @@ static char *cli_neuron_register(struct satnow_cli_args *request) {
     ssize_t rx;
 
     satnow_cli_request_repository_password(request->fd);
+#ifdef __DEBUG__
+    printf("repository password received.\n");
+#endif
     satnow_cli_send_response(request->fd, CLI_MORE, "You must add your Neuron password to your SatoriNOW respository.\n");
     satnow_cli_send_response(request->fd, CLI_INPUT_ECHO_OFF, "Neuron Password:");
     memset(buffer, 0, BUFFER_SIZE);

@@ -1,6 +1,5 @@
-# Variables
 CC = gcc
-CFLAGS = -Wall -Wextra -O2 $(INC_DIR)
+CFLAGS = -Wall -Wextra -g -Og $(INC_DIR) -D__DEBUG__
 LDFLAGS = -L/opt/homebrew/lib -lcurl -lpthread -lcrypto -lssl
 SATORINOW_SRC_DIR = src/satorinow
 SATORICLI_SRC_DIR = src/satoricli
