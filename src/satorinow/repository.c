@@ -115,16 +115,6 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
         struct repository_entry *current = list;
 
         while (current) {
-#ifdef __DEBUG__
-            printf("Entry:\n");
-            printf("  Salt: ");
-            for (int i = 0; i < SALT_LEN; i++) printf("%02x", current->salt[i]);
-            printf("\n");
-            printf("  IV: ");
-            for (int i = 0; i < IV_LEN; i++) printf("%02x", current->iv[i]);
-            printf("\n");
-            printf("  Ciphertext length: %lu\n", current->ciphertext_len);
-#endif
             if (current->plaintext) {
                 free(current->plaintext);
             }
@@ -135,9 +125,6 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
             else {
                 satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
                 current->plaintext[current->plaintext_len] = '\0';
-#ifdef __DEBUG__
-                printf("  Ciphertext data: %s\n", current->plaintext);
-#endif
                 satnow_cli_send_response(request->fd, CLI_MORE, (const char *)current->plaintext);
                 satnow_cli_send_response(request->fd, CLI_MORE, "\n");
             }
