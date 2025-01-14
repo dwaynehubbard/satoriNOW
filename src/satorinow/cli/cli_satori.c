@@ -149,7 +149,6 @@ static char *cli_neuron_register(struct satnow_cli_args *request) {
     rx = read(request->fd, buffer, BUFFER_SIZE);
     if (rx > 0) {
         buffer[rx - 1] = '\0';
-        printf("NEURON PASSWORD: [%s]\n", buffer);
         satnow_repository_entry_append(buffer, (int)strlen(buffer));
         satnow_cli_send_response(request->fd, CLI_DONE, "Neuron Registered.\n");
     }
