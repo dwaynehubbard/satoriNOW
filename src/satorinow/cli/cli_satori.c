@@ -107,6 +107,11 @@ static struct satnow_cli_op satori_cli_operations[] = {
     },
 };
 
+/**
+ * int satnow_register_satori_cli_operations()
+ * Register Satori CLI operations
+ * @return
+ */
 int satnow_register_satori_cli_operations() {
     for (int i = 0; i < (int)(sizeof(satori_cli_operations) / sizeof(satori_cli_operations[0])); i++) {
         for (int j = 0; j < SATNOW_CLI_MAX_COMMAND_WORDS; j++) {

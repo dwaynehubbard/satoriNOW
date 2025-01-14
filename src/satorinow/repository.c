@@ -96,6 +96,11 @@ void satnow_repository_password(const char *pass) {
     repository_password_expire += (REPOSITORY_PASSWORD_TIMEOUT);
 }
 
+/**
+ * int satnow_repository_password_valid()
+ * Check if the password has been provided at least once and has not expired
+ * @return
+ */
 int satnow_repository_password_valid() {
     time_t now = time(NULL);
     if (!strlen(repository_password) || now >= repository_password_expire) {
@@ -156,10 +161,6 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
             else {
                 satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
                 current->plaintext[current->plaintext_len] = '\0';
-#ifdef __DEBUG__
-                printf("  Ciphertext data: %s\n", current->plaintext);
-#endif
-
                 satnow_cli_send_response(request->fd, CLI_MORE, (const char *)current->plaintext);
                 satnow_cli_send_response(request->fd, CLI_MORE, "\n");
             }

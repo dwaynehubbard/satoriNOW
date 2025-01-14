@@ -76,6 +76,11 @@ static char *cli_show_help(struct satnow_cli_args *request) {
     return 0;
 }
 
+/**
+ * int satnow_register_core_cli_operations()
+ * Register core CLI operations
+ * @return
+ */
 int satnow_register_core_cli_operations() {
     for (int i = 0; i < (int)(sizeof(satori_cli_operations) / sizeof(satori_cli_operations[0])); i++) {
         for (int j = 0; j < SATNOW_CLI_MAX_COMMAND_WORDS; j++) {
@@ -101,18 +106,18 @@ void *satnow_cli_start() {
     int server_fd, client_fd;
     ssize_t rx;
 
-    // Create the Unix Domain Socket
+    /** Create the Unix Domain Socket */
     if ((server_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         perror("satorinow socket");
         pthread_exit(NULL);
     }
 
-    // Configure socket address
+    /** Configure the socket */
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sun_family = AF_UNIX;
     strncpy(server_addr.sun_path, SOCKET_PATH, sizeof(server_addr.sun_path) - 1);
 
-    // Bind the socket
+    /** Bind the socket */
     unlink(SOCKET_PATH);
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
         perror("satorinow bind");
@@ -120,7 +125,7 @@ void *satnow_cli_start() {
         pthread_exit(NULL);
     }
 
-    // Listen for connections
+    /** Listen for connections */
     if (listen(server_fd, 5) == -1) {
         perror("satorinow listen");
         close(server_fd);
@@ -130,13 +135,13 @@ void *satnow_cli_start() {
     printf("SatoriNOW listening for commands\n");
 
     while (1) {
-        // Accept new connections
+        /** Accept new connections */
         if ((client_fd = accept(server_fd, NULL, NULL)) == -1) {
             perror("satorinow accept");
             continue;
         }
 
-        // Read the command
+        /** Read the command */
         memset(buffer, 0, BUFFER_SIZE);
         rx = read(client_fd, buffer, BUFFER_SIZE);
 
@@ -151,8 +156,10 @@ void *satnow_cli_start() {
     pthread_exit(NULL);
 }
 
-
-// Stop the CLI socket
+/**
+ * void satnow_cli_stop()
+ * Stop the CLI
+ */
 void satnow_cli_stop() {
     if (server_fd != -1) {
         close(server_fd);
@@ -160,6 +167,12 @@ void satnow_cli_stop() {
     }
 }
 
+/**
+ * void satnow_cli_request_repository_password(int fd)
+ * Request the repository password from the CLI client and
+ * set the repository password for proper repository decryption
+ * @param fd
+ */
 void satnow_cli_request_repository_password(int fd) {
     char buffer[BUFFER_SIZE];
     ssize_t rx;
@@ -236,6 +249,10 @@ int satnow_cli_register(struct satnow_cli_op *op) {
     return 0;
 }
 
+/**
+ * void satnow_print_cli_operations()
+ * Print all the current CLI operations
+ */
 void satnow_print_cli_operations() {
     struct satnow_cli_op *current = op_list_head;
     while (current) {
@@ -248,21 +265,39 @@ void satnow_print_cli_operations() {
     }
 }
 
-
+/**
+ * static void send_header(int client_fd, int op_code, int bytes_to_come)
+ * Write the header for the send-message out to the CLI client
+ * @param client_fd
+ * @param op_code
+ * @param bytes_to_come
+ */
 static void send_header(int client_fd, int op_code, int bytes_to_come) {
-    uint32_t op_code_network = htonl(op_code);       // Convert to network byte order
-    uint32_t bytes_to_come_network = htonl(bytes_to_come); // Convert to network byte order
+    /**
+     * Convert op_code and bytes_to_come to network byte order
+     */
+    uint32_t op_code_network = htonl(op_code);
+    uint32_t bytes_to_come_network = htonl(bytes_to_come);
 
     char header[HEADER_SIZE];
-    memcpy(header, &op_code_network, 4);            // Copy OP_CODE to the header
-    memcpy(header + 4, &bytes_to_come_network, 4);  // Copy BYTES-TO-COME to the header
+    /**
+     * Copy the OP_CODE and BYTE-TO-COME to the header
+     */
+    memcpy(header, &op_code_network, 4);
+    memcpy(header + 4, &bytes_to_come_network, 4);
 
-    // Send the fixed-size header
     if (write(client_fd, header, HEADER_SIZE) == -1) {
         perror("Error sending header");
     }
 }
 
+/**
+ * void satnow_cli_send_response(int client_fd, int op_code, const char *message)
+ * Send a response to the CLI client
+ * @param client_fd
+ * @param op_code
+ * @param message
+ */
 void satnow_cli_send_response(int client_fd, int op_code, const char *message) {
     int bytes_to_come = message ? strlen(message) : 0;
 
@@ -275,6 +310,13 @@ void satnow_cli_send_response(int client_fd, int op_code, const char *message) {
     }
 }
 
+/**
+ * void satnow_cli_execute(int client_fd, const char *buffer)
+ * Find the best operation match for the contents in the buffer requested
+ * by the CLI client. If a best match is found, execute the CLI operation handler.
+ * @param client_fd
+ * @param buffer
+ */
 void satnow_cli_execute(int client_fd, const char *buffer) {
     char *buffer_copy = strdup(buffer);
     char *token = NULL;
