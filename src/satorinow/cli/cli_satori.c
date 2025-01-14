@@ -143,7 +143,7 @@ static char *cli_neuron_register(struct satnow_cli_args *request) {
 #ifdef __DEBUG__
     printf("repository password received.\n");
 #endif
-    satnow_cli_send_response(request->fd, CLI_MORE, "You must add your Neuron password to your SatoriNOW respository.\n");
+    satnow_cli_send_response(request->fd, CLI_MORE, "You must add your Neuron password to your SatoriNOW repository.\n");
     satnow_cli_send_response(request->fd, CLI_INPUT_ECHO_OFF, "Neuron Password:");
     memset(buffer, 0, BUFFER_SIZE);
     rx = read(request->fd, buffer, BUFFER_SIZE);
