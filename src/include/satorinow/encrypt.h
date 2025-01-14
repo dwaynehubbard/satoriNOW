@@ -34,18 +34,18 @@ void satnow_encrypt_derive_mast_key(const char *password, unsigned char *salt, u
 void satnow_encrypt_derive_file_key(const unsigned char *master_key, const char *file_id, unsigned char *file_key);
 
 void satnow_encrypt_ciphertext(const unsigned char *plaintext
-    , unsigned long plaintext_len
+    , int plaintext_len
     , const unsigned char *key
     , const unsigned char *iv
     , unsigned char *ciphertext
-    , unsigned long *ciphertext_len);
+    , int *ciphertext_len);
 
-void satnow_encrypt_ciphertext2text(const unsigned char *ciphertext, unsigned long ciphertext_len,
+void satnow_encrypt_ciphertext2text(const unsigned char *ciphertext, int ciphertext_len,
              const unsigned char *key, const unsigned char *iv,
-             unsigned char *plaintext, unsigned long *plaintext_len);
+             unsigned char *plaintext, int *plaintext_len);
 
-void satnow_neuron_encrypt(const unsigned char *plaintext, unsigned long plaintext_len,
+void satnow_neuron_encrypt(const unsigned char *plaintext, int plaintext_len,
              const unsigned char *key, const unsigned char *iv,
-             unsigned char *ciphertext, unsigned long *ciphertext_len);
+             unsigned char *ciphertext, int *ciphertext_len);
 
 #endif //ENCRYPT_H
