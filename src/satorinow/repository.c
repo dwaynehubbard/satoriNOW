@@ -40,20 +40,43 @@ static char repository_dat[PATH_MAX];
 static char repository_password[CONFIG_MAX_PASSWORD];
 static time_t repository_password_expire;
 
+static char *cli_repository_backup(struct satnow_cli_args *request);
+static char *cli_repository_password_change(struct satnow_cli_args *request);
 static char *cli_repository_show(struct satnow_cli_args *request);
+
 static void free_repository_entry_list(struct repository_entry *list);
 
 static struct satnow_cli_op satori_cli_operations[] = {
-        {
-                { "repository", "show", NULL }
-                , "Display the contents of the repository"
-                , "Usage: repository show"
-                , 0
-                , 0
-                , 0
-                , cli_repository_show
-                , 0
-        },
+    {
+        { "repository", "backup", NULL }
+        , "Backup the repository"
+        , "Usage: repository backup <file>"
+        , 0
+        , 0
+        , 0
+        , cli_repository_backup
+        , 0
+    },
+    {
+        { "repository", "password", NULL }
+        , "Change the repository password"
+        , "Usage: repository password"
+        , 0
+        , 0
+        , 0
+        , cli_repository_password_change
+        , 0
+    },
+    {
+        { "repository", "show", NULL }
+        , "Display the contents of the repository"
+        , "Usage: repository show"
+        , 0
+        , 0
+        , 0
+        , cli_repository_show
+        , 0
+    },
 };
 
 /**
@@ -120,6 +143,30 @@ int satnow_repository_exists() {
         return TRUE;
     }
     return FALSE;
+}
+
+/**
+ * static char *cli_repository_backup(struct satnow_cli_args *request)
+ * Backup the SatoriNOW repository to the specified <file>
+ * @param request
+ * @return
+ */
+static char *cli_repository_backup(struct satnow_cli_args *request) {
+    struct repository_entry *list = NULL;
+
+    return 0;
+}
+
+/**
+ * static char *cli_repository_password_change(struct satnow_cli_args *request)
+ * Change the repository password
+ * @param request
+ * @return
+ */
+static char *cli_repository_password_change(struct satnow_cli_args *request) {
+    struct repository_entry *list = NULL;
+
+    return 0;
 }
 
 /**

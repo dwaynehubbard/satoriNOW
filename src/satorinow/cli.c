@@ -188,6 +188,37 @@ void satnow_cli_request_repository_password(int fd) {
 }
 
 /**
+ * static int compare_commands(char *cmd1[], char *cmd2[])
+ * Compare the two supplied command arrays. This is a helper function for
+ * alphabetizing the CLI operation linked-list.
+ * @param cmd1
+ * @param cmd2
+ * @return
+ */
+static int compare_commands(char *cmd1[], char *cmd2[]) {
+    for (int i = 0; i < SATNOW_CLI_MAX_COMMAND_WORDS; i++) {
+
+        if (!cmd1[i] && !cmd2[i]) {
+            return 0;
+        }
+
+        if (!cmd1[i]) {
+            return -1;
+        }
+
+        if (!cmd2[i]) {
+            return 1;
+        }
+
+        int cmp = strcmp(cmd1[i], cmd2[i]);
+        if (cmp != 0) {
+            return cmp;
+        }
+    }
+    return 0;
+}
+
+/**
  * int satnow_cli_register(struct satnow_cli_op)
  * Perform a deep copy of the specified CLI operation and add the operation
  * to the CLI operation linked-list in alphabetic order
@@ -206,7 +237,6 @@ int satnow_cli_register(struct satnow_cli_op *op) {
 
     if (!op->handler) {
         free(new_op);
-        new_op = NULL;
         perror("CLI operation missing handler");
         return -1;
     }
@@ -228,24 +258,23 @@ int satnow_cli_register(struct satnow_cli_op *op) {
         new_op->syntax = strdup(op->syntax);
     }
 
-    if (op_list_head == NULL || strcmp(new_op->command[0], op_list_head->command[0]) < 0) {
+    if (op_list_head == NULL || compare_commands(new_op->command, op_list_head->command) < 0) {
         new_op->next = op_list_head;
         op_list_head = new_op;
         op_list_size++;
-        printf("[FIRST]CLI Operation %s\n", new_op->syntax);
         return 0;
     }
 
     struct satnow_cli_op *p = op_list_head;
-
-    while (p->next != NULL && strcmp(new_op->command[0], p->next->command[0]) > 0) {
+    while (p->next != NULL && compare_commands(new_op->command, p->next->command) > 0) {
         p = p->next;
     }
+
     new_op->next = p->next;
     p->next = new_op;
-
     op_list_size++;
-    printf("CLI Operation %s\n", new_op->syntax);
+
+    printf("CLI Operation: %s\n", new_op->syntax);
     return 0;
 }
 

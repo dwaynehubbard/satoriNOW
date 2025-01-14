@@ -41,10 +41,10 @@
 #define HEADER_SIZE 8 // 4 bytes for OP_CODE, 4 bytes for BYTES-TO-COME
 
 enum OpCode {
- CLI_DONE = 0,
- CLI_MORE = 1,
- CLI_INPUT = 2,
- CLI_INPUT_ECHO_OFF = 3
+ CLI_DONE = 0
+ , CLI_MORE = 1
+ , CLI_INPUT = 2
+ , CLI_INPUT_ECHO_OFF = 3
 };
 
 #endif //SATORINOW_H
