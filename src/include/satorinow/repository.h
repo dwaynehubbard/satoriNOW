@@ -24,10 +24,13 @@
 
 #include "satorinow/encrypt.h"
 
+#define REPOSITORY_PASSWORD_TIMEOUT (15 * 60)
+
 void satnow_repository_init(const char *config_dir);
 int satnow_register_repository_cli_operations();
 void satnow_repository_entry_append(const char *buffer, int length);
 struct repository_entry *satnow_repository_entry_list();
+int satnow_repository_password_valid();
 
 int satnow_repository_exists();
 void satnow_repository_password(const char *pass);

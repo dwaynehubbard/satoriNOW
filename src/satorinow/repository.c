@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
+#include <time.h>
 #include <unistd.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
@@ -31,10 +32,13 @@
 #include "satorinow/repository.h"
 #include "satorinow/cli.h"
 
+#ifdef __DEBUG__
 #pragma message ("SATORINOW DEBUG: REPOSITORY")
+#endif
 
 static char repository_dat[PATH_MAX];
 static char repository_password[CONFIG_MAX_PASSWORD];
+static time_t repository_password_expire;
 
 static char *cli_repository_show(struct satnow_cli_args *request);
 static void free_repository_entry_list(struct repository_entry *list);
@@ -78,6 +82,7 @@ int satnow_register_repository_cli_operations() {
  */
 void satnow_repository_init(const char *config_dir) {
     snprintf(repository_dat, sizeof(repository_dat), "%s/%s", config_dir, CONFIG_DAT);
+    memset(repository_password, 0, sizeof(repository_password));
 }
 
 /**
@@ -87,6 +92,17 @@ void satnow_repository_init(const char *config_dir) {
  */
 void satnow_repository_password(const char *pass) {
     snprintf(repository_password, sizeof(repository_password), "%s", pass);
+    repository_password_expire = time(NULL);
+    repository_password_expire += (REPOSITORY_PASSWORD_TIMEOUT);
+}
+
+int satnow_repository_password_valid() {
+    time_t now = time(NULL);
+    if (!strlen(repository_password) || now >= repository_password_expire) {
+        memset(repository_password, 0, sizeof(repository_password));
+        return FALSE;
+    }
+    return TRUE;
 }
 
 /**
@@ -110,7 +126,9 @@ int satnow_repository_exists() {
 static char *cli_repository_show(struct satnow_cli_args *request) {
     struct repository_entry *list = NULL;
 
-    satnow_cli_request_repository_password(request->fd);
+    if (!satnow_repository_password_valid()) {
+        satnow_cli_request_repository_password(request->fd);
+    }
 
     list = satnow_repository_entry_list();
     if (list) {

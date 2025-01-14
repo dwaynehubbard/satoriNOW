@@ -164,7 +164,6 @@ void satnow_cli_request_repository_password(int fd) {
     char buffer[BUFFER_SIZE];
     ssize_t rx;
 
-    satnow_cli_send_response(fd, CLI_MORE, "You must set a repository password for your sensitive SatoriNOW information.\n");
     satnow_cli_send_response(fd, CLI_INPUT_ECHO_OFF, "Repository Password:");
     memset(buffer, 0, BUFFER_SIZE);
     rx = read(fd, buffer, BUFFER_SIZE);

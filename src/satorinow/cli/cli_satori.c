@@ -26,7 +26,6 @@
 #include <satorinow.h>
 #include "satorinow/cli.h"
 #include "satorinow/repository.h"
-#include "satorinow/encrypt.h"
 
 #ifdef __DEBUG__
 #pragma message ("SATORINOW DEBUG: CLI SATORI")
@@ -133,7 +132,9 @@ static char *cli_neuron_register(struct satnow_cli_args *request) {
     char buffer[BUFFER_SIZE];
     ssize_t rx;
 
-    satnow_cli_request_repository_password(request->fd);
+    if (!satnow_repository_password_valid()) {
+        satnow_cli_request_repository_password(request->fd);
+    }
 #ifdef __DEBUG__
     printf("repository password received.\n");
 #endif
