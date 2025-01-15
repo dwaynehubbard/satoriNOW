@@ -27,7 +27,7 @@
 struct satnow_cli_args {
     int fd;
     int argc;
-    char * *argv;
+    char **argv;
     struct satnow_cli_op *ref;
 };
 

@@ -152,8 +152,63 @@ int satnow_repository_exists() {
  * @return
  */
 static char *cli_repository_backup(struct satnow_cli_args *request) {
+    char filename[PATH_MAX];
+    char tbuf[1024];
     struct repository_entry *list = NULL;
 
+    if (!satnow_repository_password_valid()) {
+        satnow_cli_request_repository_password(request->fd);
+    }
+
+    for (int i = 0; i < request->argc; i++) {
+        printf("ARG[%d]: %s\n", i, request->argv[i]);
+    }
+
+    if (request->argc != 3) {
+        satnow_cli_send_response(request->fd, CLI_MORE, request->ref->syntax);
+        satnow_cli_send_response(request->fd, CLI_DONE, "\n");
+        return 0;
+    }
+
+    if (strchr(request->argv[2], '/')) {
+        /** client provided a directory */
+        snprintf(filename, sizeof(filename), "%s", request->argv[2]);
+    }else{
+        snprintf(filename, sizeof(filename), "%s/%s", satnow_config_directory(), request->argv[2]);
+    }
+
+    FILE *repo = fopen(filename, "a+b");
+    if (!repo) {
+        perror("Failed to open repository backup destination");
+        return 0;
+    }
+    satnow_cli_send_response(request->fd, CLI_MORE, "Backing up repository...\n");
+
+    list = satnow_repository_entry_list();
+    if (list) {
+        struct repository_entry *current = list;
+
+        while (current) {
+            if (current->plaintext) {
+                free(current->plaintext);
+            }
+            current->plaintext = malloc(current->ciphertext_len + 1);
+            if (!current->plaintext) {
+                printf("Out of memory\n");
+            }
+            else {
+                fwrite(current->salt, 1, SALT_LEN, repo);
+                fwrite(current->iv, 1, IV_LEN, repo);
+                fwrite(&current->ciphertext_len, sizeof(unsigned long), 1, repo);
+                fwrite(current->ciphertext, 1, current->ciphertext_len, repo);
+            }
+            current = current->next;
+        }
+        free_repository_entry_list(list);
+    }
+    snprintf(tbuf, sizeof(tbuf), "Your repository was backed up to %s\n", filename);
+    satnow_cli_send_response(request->fd, CLI_DONE, tbuf);
+    fclose(repo);
     return 0;
 }
 
@@ -243,6 +298,7 @@ void satnow_repository_entry_append(const char *buffer, int length) {
     if (!RAND_bytes(entry->salt, SALT_LEN)) {
         perror("Error generating salt");
         free(entry);
+        fclose(repo);
         return;
     }
 #if __DEBUG__
@@ -254,6 +310,7 @@ void satnow_repository_entry_append(const char *buffer, int length) {
     if (!RAND_bytes(entry->iv, IV_LEN)) {
         perror("Error generating iv");
         free(entry);
+        fclose(repo);
         return;
     }
 #if __DEBUG__

@@ -33,7 +33,7 @@
 
 #define SATNOW_CLI_MAX_COMMAND_WORDS 8
 #define BANNER "**************************************************"
-#define CONFIG_DIR "~/.satorinow"
+#define CONFIG_DIR ".satorinow"
 #define CONFIG_DAT "satorinow.dat"
 #define CONFIG_MAX_PASSWORD 128
 #define SOCKET_PATH "/tmp/satorinow.socket"
@@ -46,5 +46,7 @@ enum OpCode {
  , CLI_INPUT = 2
  , CLI_INPUT_ECHO_OFF = 3
 };
+
+const char *satnow_config_directory();
 
 #endif //SATORINOW_H

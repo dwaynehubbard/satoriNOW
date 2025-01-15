@@ -35,6 +35,14 @@
 
 static char config_dir[PATH_MAX];
 
+/**
+ * const char *satnow_config_directory()
+ * Return the configuration directory
+ * @return
+ */
+const char *satnow_config_directory() {
+    return config_dir;
+}
 
 /**
  * void cleanup(int signum)
@@ -69,6 +77,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
     snprintf(config_dir, sizeof(config_dir), "%s/.satorinow", home);
+    printf("CONFIG DIR: [%s]\n", config_dir);
 
     struct stat st;
     if (stat(config_dir, &st) != 0) {
