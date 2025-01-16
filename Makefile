@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -g -Og $(INC_DIR) -D__DEBUG__
-LDFLAGS = -L/opt/homebrew/lib -lcurl -lpthread -lcrypto -lssl
+LDFLAGS = -L/opt/homebrew/lib -lcurl -lpthread -lcrypto -lssl -lcjson
 SATORINOW_SRC_DIR = src/satorinow
 SATORICLI_SRC_DIR = src/satoricli
 INC_DIR = -Isrc/include -I/opt/homebrew/include
@@ -13,6 +13,7 @@ SATORINOW_SRC = $(SATORINOW_SRC_DIR)/main.c \
 	$(SATORINOW_SRC_DIR)/cli.c \
 	$(SATORINOW_SRC_DIR)/cli/cli_satori.c \
 	$(SATORINOW_SRC_DIR)/encrypt.c \
+	$(SATORINOW_SRC_DIR)/json.c \
 	$(SATORINOW_SRC_DIR)/repository.c \
 
 SATORICLI_SRC = $(SATORICLI_SRC_DIR)/main.c

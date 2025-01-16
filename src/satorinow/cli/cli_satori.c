@@ -27,6 +27,7 @@
 #include <satorinow.h>
 #include "satorinow/cli.h"
 #include "satorinow/repository.h"
+#include "satorinow/json.h"
 
 #ifdef __DEBUG__
 #pragma message ("SATORINOW DEBUG: CLI SATORI")
@@ -135,10 +136,11 @@ int satnow_register_satori_cli_operations() {
  * @return
  */
 static char *cli_neuron_register(struct satnow_cli_args *request) {
-    char pass[128];
+    char passbuf[CONFIG_MAX_PASSWORD];
     char buffer[BUFFER_SIZE];
     char *host = NULL;
     char *name = NULL;
+    char *pass = NULL;
     ssize_t rx;
     int total = 0;
 
@@ -157,12 +159,12 @@ static char *cli_neuron_register(struct satnow_cli_args *request) {
         return 0;
     }
 
-    host = strdup(request->argv[2]);
+    host = satnow_json_string_escape(request->argv[2]);
     total += strlen(host) + 1;
     printf("HOST: %s\n", host);
 
     if (request->argc >= 4) {
-        name = strdup(request->argv[3]);
+        name = satnow_json_string_escape(request->argv[3]);
         total += strlen(name) + 1;
         printf("NAME: %s\n", name);
     }
@@ -171,28 +173,42 @@ static char *cli_neuron_register(struct satnow_cli_args *request) {
     satnow_cli_send_response(request->fd, CLI_INPUT_ECHO_OFF, "Neuron Password:");
 
     memset(buffer, 0, BUFFER_SIZE);
-    rx = read(request->fd, pass, 128);
+    rx = read(request->fd, passbuf, CONFIG_MAX_PASSWORD);
 
     if (rx > 0) {
         char *contents = NULL;
-        pass[rx - 1] = '\0';
+        passbuf[rx - 1] = '\0';
+        pass = satnow_json_string_escape(passbuf);
         total += strlen(pass) + 1;
-        printf("PASS: %s\n", name);
+        printf("\nPASS: %s\n", name);
         printf("TOTAL: %d\n", total);
 
-        snprintf(buffer, BUFFER_SIZE
-            , "%s%s%s%s%s"
-            , host
-            , REPOSITORY_DELIMITER
-            , pass
-            , REPOSITORY_DELIMITER
-            , name == NULL ? "":name);
+        cJSON *json = cJSON_CreateObject();
+        if (!json) {
+            fprintf(stderr, "Failed to create JSON object.\n");
+            free(host);
+            free(name);
+            free(pass);
+            return 0;
+        }
 
+        cJSON_AddStringToObject(json, "host", host);
+        cJSON_AddStringToObject(json, "password", pass);
+        cJSON_AddStringToObject(json, "nickname", name);
+
+        contents = cJSON_PrintUnformatted(json);
+        strncpy(buffer, contents, strlen(contents));
         printf("CONTENTS: %s\n", buffer);
 
         satnow_repository_entry_append(buffer, (int)strlen(buffer));
         satnow_cli_send_response(request->fd, CLI_DONE, "Neuron Registered.\n");
+        free(contents);
     }
+
+    free(host);
+    free(name);
+    free(pass);
+
     return 0;
 }
 

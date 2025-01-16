@@ -31,6 +31,7 @@
 #include <satorinow.h>
 #include "satorinow/repository.h"
 #include "satorinow/cli.h"
+#include "satorinow/json.h"
 
 #ifdef __DEBUG__
 #pragma message ("SATORINOW DEBUG: REPOSITORY")
@@ -239,6 +240,7 @@ static char *cli_repository_password_change(struct satnow_cli_args *request) {
  */
 static char *cli_repository_show(struct satnow_cli_args *request) {
     struct repository_entry *list = NULL;
+    char cli_buf[1024];
 
     if (!satnow_repository_password_valid()) {
         satnow_cli_request_repository_password(request->fd);
@@ -247,6 +249,9 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
     list = satnow_repository_entry_list();
     if (list) {
         struct repository_entry *current = list;
+
+        snprintf(cli_buf, sizeof(cli_buf), "\t%s\t%s\t%s\n", "HOST", "NICKNAME", "PASSWORD");
+        satnow_cli_send_response(request->fd, CLI_MORE, (const char *)cli_buf);
 
         while (current) {
 #ifdef __DEBUG__
@@ -268,14 +273,36 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
                 printf("Out of memory\n");
             }
             else {
+                cJSON *json = NULL;
+
                 satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
                 current->plaintext[current->plaintext_len] = '\0';
-                struct repository_entry_content* content = parse_repository_entry(current->plaintext);
-                char *content_str = repository_content_list_to_string(content);
-                satnow_cli_send_response(request->fd, CLI_MORE, (const char *)content_str);
-                satnow_cli_send_response(request->fd, CLI_MORE, "\n");
-                free_repository_content_list(content);
-                free(content_str);
+
+                json = cJSON_Parse(current->plaintext);
+                if (!json) {
+                    fprintf(stderr, "Invalid JSON format.\n");
+                } else {
+                    const cJSON *json_host = cJSON_GetObjectItemCaseSensitive(json, "host");
+                    const cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
+                    const cJSON *json_nickname = cJSON_GetObjectItemCaseSensitive(json, "nickname");
+
+                    char *host = satnow_json_string_unescape(json_host->valuestring);
+                    char *pass = satnow_json_string_unescape(json_password->valuestring);
+                    char *nickname = satnow_json_string_unescape(json_nickname->valuestring);
+
+                    char *maskedpass = calloc(1, strlen(pass) + 1);
+                    for (int i = 0; i < strlen(pass); i++) {
+                        maskedpass[i] = '*';
+                    }
+
+                    snprintf(cli_buf, sizeof(cli_buf), "\t%s\t%s\t%s\n", host, nickname, maskedpass);
+                    satnow_cli_send_response(request->fd, CLI_MORE, (const char *)cli_buf);
+
+                    free(host);
+                    free(pass);
+                    free(nickname);
+                    free(maskedpass);
+                }
             }
             current = current->next;
         }
@@ -462,8 +489,6 @@ struct repository_entry *satnow_repository_entry_list() {
     fclose(repo);
     return head;
 }
-
-
 
 static char *repository_content_list_to_string(struct repository_entry_content *head) {
     char *answer = NULL;
