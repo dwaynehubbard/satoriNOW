@@ -321,7 +321,7 @@ void satnow_repository_entry_append(const char *buffer, int length) {
 #if __DEBUG__
     printf("Writing ciphertext to repository\n");
 #endif
-    entry->ciphertext = calloc(sizeof(unsigned char), length);
+    entry->ciphertext = calloc(sizeof(unsigned char), length + EVP_MAX_BLOCK_LENGTH);
     satnow_encrypt_ciphertext((unsigned char *)buffer, length, entry->file_key, entry->iv, entry->ciphertext, &entry->ciphertext_len);
     fwrite(&entry->ciphertext_len, sizeof(unsigned long), 1, repo);
     fwrite(entry->ciphertext, 1, entry->ciphertext_len, repo);
