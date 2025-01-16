@@ -46,6 +46,12 @@ static char *cli_repository_show(struct satnow_cli_args *request);
 
 static void free_repository_entry_list(struct repository_entry *list);
 
+static struct repository_entry_content* parse_repository_entry(const char *content);
+static void free_repository_content_list(struct repository_entry_content *head);
+static void print_repository_content_list(struct repository_entry_content *head);
+static struct repository_entry_content* create_repository_content_element(const char *content);
+static char *repository_content_list_to_string(struct repository_entry_content *head);
+
 static struct satnow_cli_op satori_cli_operations[] = {
     {
         { "repository", "backup", NULL }
@@ -114,6 +120,7 @@ void satnow_repository_init(const char *config_dir) {
  * @param pass
  */
 void satnow_repository_password(const char *pass) {
+    /** XXX : probably need to convert REPOSITORY_DELIMITER to unicode */
     snprintf(repository_password, sizeof(repository_password), "%s", pass);
     repository_password_expire = time(NULL);
     repository_password_expire += (REPOSITORY_PASSWORD_TIMEOUT);
@@ -263,8 +270,12 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
             else {
                 satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
                 current->plaintext[current->plaintext_len] = '\0';
-                satnow_cli_send_response(request->fd, CLI_MORE, (const char *)current->plaintext);
+                struct repository_entry_content* content = parse_repository_entry(current->plaintext);
+                char *content_str = repository_content_list_to_string(content);
+                satnow_cli_send_response(request->fd, CLI_MORE, (const char *)content_str);
                 satnow_cli_send_response(request->fd, CLI_MORE, "\n");
+                free_repository_content_list(content);
+                free(content_str);
             }
             current = current->next;
         }
@@ -449,5 +460,83 @@ struct repository_entry *satnow_repository_entry_list() {
     }
 
     fclose(repo);
+    return head;
+}
+
+
+
+static char *repository_content_list_to_string(struct repository_entry_content *head) {
+    char *answer = NULL;
+    unsigned long answer_len = 0;
+    struct repository_entry_content *current = head;
+    while (current != NULL) {
+        printf("Content: %s, Length: %lu\n", current->content, current->content_len);
+        answer_len += current->content_len + 1;
+        current = current->next;
+    }
+    answer = calloc(1, answer_len);
+    current = head;
+    while (current != NULL) {
+        printf("ANSWER: [%s]\n", answer);
+        snprintf(&answer[strlen(answer)], answer_len - strlen(answer), "%s%s", strlen(answer) == 0 ? "":" ", current->content);
+        current = current->next;
+    }
+    return answer;
+}
+
+static struct repository_entry_content* create_repository_content_element(const char *content) {
+    struct repository_entry_content *new_node = (struct repository_entry_content *)malloc(sizeof(struct repository_entry_content));
+    if (new_node == NULL) {
+        perror("Failed to allocate memory");
+        exit(EXIT_FAILURE);
+    }
+
+    new_node->content = strdup(content);
+    if (new_node->content == NULL) {
+        perror("Failed to duplicate string");
+        free(new_node);
+        exit(EXIT_FAILURE);
+    }
+    new_node->content_len = strlen(content);
+    new_node->next = NULL;
+    return new_node;
+}
+
+static void print_repository_content_list(struct repository_entry_content *head) {
+    struct repository_entry_content *current = head;
+    while (current != NULL) {
+        printf("Content: %s, Length: %lu\n", current->content, current->content_len);
+        current = current->next;
+    }
+}
+
+static void free_repository_content_list(struct repository_entry_content *head) {
+    struct repository_entry_content *current = head;
+    while (current != NULL) {
+        struct repository_entry_content *next = current->next;
+        free(current->content);
+        free(current);
+        current = next;
+    }
+}
+
+static struct repository_entry_content* parse_repository_entry(const char *content) {
+    const char delimiter[] = REPOSITORY_DELIMITER;
+    struct repository_entry_content *head = NULL;
+    struct repository_entry_content *tail = NULL;
+
+    char *token = strtok(content, delimiter);
+    while (token != NULL) {
+        struct repository_entry_content *new_node = create_repository_content_element(token);
+        if (head == NULL) {
+            head = new_node;
+            tail = new_node;
+        } else {
+            tail->next = new_node;
+            tail = new_node;
+        }
+        token = strtok(NULL, delimiter);
+    }
+
     return head;
 }

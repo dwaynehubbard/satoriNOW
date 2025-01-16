@@ -21,8 +21,9 @@
  */
 
 #include <stdio.h>
-#include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <satorinow.h>
 #include "satorinow/cli.h"
 #include "satorinow/repository.h"
@@ -134,21 +135,61 @@ int satnow_register_satori_cli_operations() {
  * @return
  */
 static char *cli_neuron_register(struct satnow_cli_args *request) {
+    char pass[128];
     char buffer[BUFFER_SIZE];
+    char *host = NULL;
+    char *name = NULL;
     ssize_t rx;
+    int total = 0;
 
     if (!satnow_repository_password_valid()) {
         satnow_cli_request_repository_password(request->fd);
     }
-#ifdef __DEBUG__
-    printf("repository password received.\n");
-#endif
+
+    for (int i = 0; i < request->argc; i++) {
+        printf("ARG[%d]: %s\n", i, request->argv[i]);
+    }
+
+    /** neuron register <host:ip> [<nickname>] */
+    if (request->argc < 3 || request->argc > 4) {
+        satnow_cli_send_response(request->fd, CLI_MORE, request->ref->syntax);
+        satnow_cli_send_response(request->fd, CLI_DONE, "\n");
+        return 0;
+    }
+
+    host = strdup(request->argv[2]);
+    total += strlen(host) + 1;
+    printf("HOST: %s\n", host);
+
+    if (request->argc >= 4) {
+        name = strdup(request->argv[3]);
+        total += strlen(name) + 1;
+        printf("NAME: %s\n", name);
+    }
+
     satnow_cli_send_response(request->fd, CLI_MORE, "You must add your Neuron password to your SatoriNOW repository.\n");
     satnow_cli_send_response(request->fd, CLI_INPUT_ECHO_OFF, "Neuron Password:");
+
     memset(buffer, 0, BUFFER_SIZE);
-    rx = read(request->fd, buffer, BUFFER_SIZE);
+    rx = read(request->fd, pass, 128);
+
     if (rx > 0) {
-        buffer[rx - 1] = '\0';
+        char *contents = NULL;
+        pass[rx - 1] = '\0';
+        total += strlen(pass) + 1;
+        printf("PASS: %s\n", name);
+        printf("TOTAL: %d\n", total);
+
+        snprintf(buffer, BUFFER_SIZE
+            , "%s%s%s%s%s"
+            , host
+            , REPOSITORY_DELIMITER
+            , pass
+            , REPOSITORY_DELIMITER
+            , name == NULL ? "":name);
+
+        printf("CONTENTS: %s\n", buffer);
+
         satnow_repository_entry_append(buffer, (int)strlen(buffer));
         satnow_cli_send_response(request->fd, CLI_DONE, "Neuron Registered.\n");
     }

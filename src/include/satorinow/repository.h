@@ -25,6 +25,7 @@
 #include "satorinow/encrypt.h"
 
 #define REPOSITORY_PASSWORD_TIMEOUT (15 * 60)
+#define REPOSITORY_DELIMITER "|"
 
 void satnow_repository_init(const char *config_dir);
 int satnow_register_repository_cli_operations();
@@ -49,6 +50,20 @@ struct repository_entry {
     unsigned char *plaintext;
     unsigned long plaintext_len;
     struct repository_entry *next;
+};
+
+/**
+ * Parsed struct repository_entry plaintext will be organized into
+ * a linked-list of struct repository_entry_content after it is split
+ * by the specified REPOSITORY_DELIMITER character
+ *
+ * XXX : may want to add a content_type field eventually to allow
+ * for more complex content like JSON
+ */
+struct repository_entry_content {
+    char *content;
+    unsigned long content_len;
+    struct repository_entry_content *next;
 };
 
 #endif //REPOSITORY_H
