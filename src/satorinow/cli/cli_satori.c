@@ -192,6 +192,7 @@ static char *cli_neuron_register(struct satnow_cli_args *request) {
             return 0;
         }
 
+        cJSON_AddStringToObject(json, "entry_type", REPO_ENTRY_TYPE_NEURON);
         cJSON_AddStringToObject(json, "host", host);
         cJSON_AddStringToObject(json, "password", pass);
         cJSON_AddStringToObject(json, "nickname", name);

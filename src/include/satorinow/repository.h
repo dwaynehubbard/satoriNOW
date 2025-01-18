@@ -28,6 +28,8 @@
 #define REPOSITORY_DELIMITER "|"
 
 void satnow_repository_init(const char *config_dir);
+void satnow_repository_shutdown();
+
 int satnow_register_repository_cli_operations();
 void satnow_repository_entry_append(const char *buffer, int length);
 struct repository_entry *satnow_repository_entry_list();
@@ -64,6 +66,10 @@ struct repository_entry_content {
     char *content;
     unsigned long content_len;
     struct repository_entry_content *next;
+};
+
+enum RepositoryEntryType {
+    REPO_ENTRY_TYPE_NEURON = 0,
 };
 
 #endif //REPOSITORY_H

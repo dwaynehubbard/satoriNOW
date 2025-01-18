@@ -34,6 +34,7 @@
 #include "satorinow/repository.h"
 
 static char config_dir[PATH_MAX];
+static int do_shutdown = 0;
 
 /**
  * const char *satnow_config_directory()
@@ -45,17 +46,14 @@ const char *satnow_config_directory() {
 }
 
 /**
- * void cleanup(int signum)
- * shutdown and cleanup
+ * void shutdown(int signum)
+ * Trigger shutdown
  * @param signum
  */
-void cleanup(int signum) {
+void satnow_shutdown(int signum) {
     (void)signum;
     printf("SatoriNOW shutting down\n");
-
-    curl_global_cleanup();
-    satnow_cli_stop();
-    exit(EXIT_SUCCESS);
+    do_shutdown = TRUE;
 }
 
 /**
@@ -106,8 +104,8 @@ int main() {
     /**
      * Initialize shutdown signal handlers
      */
-    signal(SIGINT, cleanup);
-    signal(SIGTERM, cleanup);
+    signal(SIGINT, satnow_shutdown);
+    signal(SIGTERM, satnow_shutdown);
 
     /**
      * Create CLI socket thread
@@ -121,7 +119,7 @@ int main() {
     /**
      * Running loop
      */
-    while (1) {
+    while (!do_shutdown) {
         /**
          * Perform various background activities
          */
@@ -131,7 +129,10 @@ int main() {
     /**
      * Shutting down activities
      */
+    curl_global_cleanup();
+    satnow_cli_stop();
     pthread_join(cli_thread, NULL);
+    satnow_repository_shutdown();
 
     return 0;
 }

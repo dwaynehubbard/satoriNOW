@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
@@ -36,6 +37,8 @@
 #ifdef __DEBUG__
 #pragma message ("SATORINOW DEBUG: REPOSITORY")
 #endif
+
+pthread_mutex_t repository_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static char repository_dat[PATH_MAX];
 static char repository_password[CONFIG_MAX_PASSWORD];
@@ -115,6 +118,10 @@ void satnow_repository_init(const char *config_dir) {
     memset(repository_password, 0, sizeof(repository_password));
 }
 
+void satnow_repository_shutdown() {
+    pthread_mutex_destroy(&repository_mutex);
+}
+
 /**
  * void satnow_repository_password(const char *pass)
  * Set the repository password
@@ -185,9 +192,12 @@ static char *cli_repository_backup(struct satnow_cli_args *request) {
         snprintf(filename, sizeof(filename), "%s/%s", satnow_config_directory(), request->argv[2]);
     }
 
+    pthread_mutex_lock(&repository_mutex);
+
     FILE *repo = fopen(filename, "a+b");
     if (!repo) {
         perror("Failed to open repository backup destination");
+        pthread_mutex_unlock(&repository_mutex);
         return 0;
     }
     satnow_cli_send_response(request->fd, CLI_MORE, "Backing up repository...\n");
@@ -217,6 +227,7 @@ static char *cli_repository_backup(struct satnow_cli_args *request) {
     snprintf(tbuf, sizeof(tbuf), "Your repository was backed up to %s\n", filename);
     satnow_cli_send_response(request->fd, CLI_DONE, tbuf);
     fclose(repo);
+    pthread_mutex_unlock(&repository_mutex);
     return 0;
 }
 
@@ -324,10 +335,13 @@ void satnow_repository_entry_append(const char *buffer, int length) {
 #if __DEBUG__
     printf("Opening repository\n");
 #endif
+    pthread_mutex_lock(&repository_mutex);
+
     FILE *repo = fopen(repository_dat, "a+b");
     if (!repo) {
         perror("Fatal repository error");
         free(entry);
+        pthread_mutex_unlock(&repository_mutex);
         return;
     }
 #if __DEBUG__
@@ -337,6 +351,7 @@ void satnow_repository_entry_append(const char *buffer, int length) {
         perror("Error generating salt");
         free(entry);
         fclose(repo);
+        pthread_mutex_unlock(&repository_mutex);
         return;
     }
 #if __DEBUG__
@@ -349,6 +364,7 @@ void satnow_repository_entry_append(const char *buffer, int length) {
         perror("Error generating iv");
         free(entry);
         fclose(repo);
+        pthread_mutex_unlock(&repository_mutex);
         return;
     }
 #if __DEBUG__
@@ -369,6 +385,7 @@ void satnow_repository_entry_append(const char *buffer, int length) {
     free(entry->ciphertext);
     free(entry);
     fclose(repo);
+    pthread_mutex_unlock(&repository_mutex);
 }
 
 /**
@@ -402,9 +419,12 @@ struct repository_entry *satnow_repository_entry_list() {
     struct repository_entry *head = NULL;
     struct repository_entry *tail = NULL;
 
+    pthread_mutex_lock(&repository_mutex);
+
     FILE *repo = fopen(repository_dat, "rb");
     if (!repo) {
         perror("Error opening repository file");
+        pthread_mutex_unlock(&repository_mutex);
         return NULL;
     }
 
@@ -417,6 +437,7 @@ struct repository_entry *satnow_repository_entry_list() {
             perror("Failed to allocate memory for repository entry");
             free_repository_entry_list(head);
             fclose(repo);
+            pthread_mutex_unlock(&repository_mutex);
             return NULL;
         }
 
@@ -430,6 +451,7 @@ struct repository_entry *satnow_repository_entry_list() {
             free_repository_entry_list(head);
             free(entry);
             fclose(repo);
+            pthread_mutex_unlock(&repository_mutex);
             return NULL;
         }
 
@@ -438,6 +460,7 @@ struct repository_entry *satnow_repository_entry_list() {
             free_repository_entry_list(head);
             free(entry);
             fclose(repo);
+            pthread_mutex_unlock(&repository_mutex);
             return NULL;
         }
 
@@ -446,6 +469,7 @@ struct repository_entry *satnow_repository_entry_list() {
             free_repository_entry_list(head);
             free(entry);
             fclose(repo);
+            pthread_mutex_unlock(&repository_mutex);
             return NULL;
         }
 
@@ -454,6 +478,7 @@ struct repository_entry *satnow_repository_entry_list() {
             free_repository_entry_list(head);
             free(entry);
             fclose(repo);
+            pthread_mutex_unlock(&repository_mutex);
             return NULL;
         }
 
@@ -463,6 +488,7 @@ struct repository_entry *satnow_repository_entry_list() {
             free_repository_entry_list(head);
             free(entry);
             fclose(repo);
+            pthread_mutex_unlock(&repository_mutex);
             return NULL;
         }
 
@@ -472,6 +498,7 @@ struct repository_entry *satnow_repository_entry_list() {
             free(entry->ciphertext);
             free(entry);
             fclose(repo);
+            pthread_mutex_unlock(&repository_mutex);
             return NULL;
         }
 
@@ -487,6 +514,7 @@ struct repository_entry *satnow_repository_entry_list() {
     }
 
     fclose(repo);
+    pthread_mutex_unlock(&repository_mutex);
     return head;
 }
 
