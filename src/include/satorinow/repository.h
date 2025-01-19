@@ -33,6 +33,7 @@ void satnow_repository_shutdown();
 int satnow_register_repository_cli_operations();
 void satnow_repository_entry_append(const char *buffer, int length);
 struct repository_entry *satnow_repository_entry_list();
+void satnow_repository_entry_list_free(struct repository_entry *list);
 int satnow_repository_password_valid();
 
 int satnow_repository_exists();

@@ -39,6 +39,8 @@
 #define SOCKET_PATH "/tmp/satorinow.socket"
 #define BUFFER_SIZE 1024
 #define HEADER_SIZE 8 // 4 bytes for OP_CODE, 4 bytes for BYTES-TO-COME
+#define URL_MAX 1024
+#define URL_DATA_MAX 1024
 
 enum OpCode {
  CLI_DONE = 0

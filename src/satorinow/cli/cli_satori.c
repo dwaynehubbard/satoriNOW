@@ -23,7 +23,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <unistd.h>
+#include <curl/curl.h>
 #include <satorinow.h>
 #include "satorinow/cli.h"
 #include "satorinow/repository.h"
@@ -35,6 +37,8 @@
 
 static char *cli_neuron_register(struct satnow_cli_args *request);
 static char *cli_neuron_unlock(struct satnow_cli_args *request);
+
+static char *http_neuron_unlock(const char *host, const char *pass);
 
 static struct satnow_cli_op satori_cli_operations[] = {
     {
@@ -214,6 +218,168 @@ static char *cli_neuron_register(struct satnow_cli_args *request) {
 }
 
 static char *cli_neuron_unlock(struct satnow_cli_args *request) {
-    printf("EXECUTE: cli_neuron_unlock (%d)\n", request->fd);
+    struct repository_entry *list = NULL;
+    char cli_buf[1024];
+    char *cookie = NULL;
+
+    if (!satnow_repository_password_valid()) {
+        satnow_cli_request_repository_password(request->fd);
+    }
+
+    for (int i = 0; i < request->argc; i++) {
+        printf("ARG[%d]: %s\n", i, request->argv[i]);
+    }
+
+    list = satnow_repository_entry_list();
+    if (list) {
+        struct repository_entry *current = list;
+
+        while (current) {
+#ifdef __DEBUG__
+            printf("Entry:\n");
+            printf("  Salt: ");
+            for (int i = 0; i < SALT_LEN; i++) printf("%02x", current->salt[i]);
+            printf("\n");
+            printf("  IV: ");
+            for (int i = 0; i < IV_LEN; i++) printf("%02x", current->iv[i]);
+            printf("\n");
+            printf("  Ciphertext length: %lu\n", current->ciphertext_len);
+#endif
+
+            if (current->plaintext) {
+                free(current->plaintext);
+            }
+            current->plaintext = malloc(current->ciphertext_len + 1);
+            if (!current->plaintext) {
+                printf("Out of memory\n");
+            }
+            else {
+                cJSON *json = NULL;
+
+                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
+                current->plaintext[current->plaintext_len] = '\0';
+
+                json = cJSON_Parse(current->plaintext);
+                if (!json) {
+                    fprintf(stderr, "Invalid JSON format.\n");
+                } else {
+                    const cJSON *json_host = cJSON_GetObjectItemCaseSensitive(json, "host");
+                    const cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
+                    const cJSON *json_nickname = cJSON_GetObjectItemCaseSensitive(json, "nickname");
+
+                    char *host = satnow_json_string_unescape(json_host->valuestring);
+                    char *pass = satnow_json_string_unescape(json_password->valuestring);
+                    char *nickname = satnow_json_string_unescape(json_nickname->valuestring);
+
+                    if (!strcasecmp(host, request->argv[2]) || !strcasecmp(nickname, request->argv[2])) {
+                        char cookie_buffer[BUFFER_SIZE];
+                        cookie = http_neuron_unlock(host, pass);
+                        snprintf(cookie_buffer, BUFFER_SIZE, "%s\n", cookie);
+                        satnow_cli_send_response(request->fd, CLI_MORE, "Neuron Unlocked. Session cookie to follow:\n");
+                        satnow_cli_send_response(request->fd, CLI_MORE, cookie_buffer);
+                        free(cookie);
+                    }
+
+                    free(host);
+                    free(pass);
+                    free(nickname);
+                }
+            }
+            current = current->next;
+        }
+        satnow_repository_entry_list_free(list);
+    }
+    satnow_cli_send_response(request->fd, CLI_DONE, "\n");
     return 0;
+}
+
+size_t write_callback(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+    size_t written = fwrite(ptr, size, nmemb, stream);
+    return written;
+}
+
+static char *http_neuron_unlock(const char *host, const char *pass) {
+    char url[URL_MAX];
+    char url_data[URL_DATA_MAX];
+    char cookie_file[PATH_MAX];
+    char response_file[PATH_MAX];
+    char *the_cookie = NULL;
+    CURL *curl;
+    CURLcode result;
+
+    snprintf(url, sizeof(url), "http://%s/unlock", host);
+    snprintf(url_data, sizeof(url_data), "passphrase=%s&next=http://%s/vault", pass, host);
+
+    time_t now = time(NULL);
+    if (now == -1) {
+        perror("Failed to get current time");
+        return 0;
+    }
+    snprintf(cookie_file, sizeof(cookie_file), "%s/%s-%ld.cookie", satnow_config_directory(), host, now);
+    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), host, now);
+    printf("http_neuron_unlock: %s, %s\n", cookie_file, response_file);
+
+    curl = curl_easy_init();
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, url_data);
+
+        struct curl_slist *headers = NULL;
+        headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        curl_easy_setopt(curl, CURLOPT_COOKIEJAR, cookie_file);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+
+        /*
+        FILE *response = fopen(response_file, "w+");
+        if (response) {
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+        }
+        */
+
+        result = curl_easy_perform(curl);
+        if (result != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(result));
+        }
+
+        /*
+        if (response_file) {
+            fclose(response_file);
+        }
+        */
+
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+
+        FILE *cookie = fopen(cookie_file, "r");
+        if (cookie) {
+            char tbuf[1024];
+            int done = FALSE;
+
+            do {
+                memset(tbuf, 0, sizeof(tbuf));
+                fgets(tbuf, 1023, cookie);
+                if (strlen(tbuf)) {
+                    char *session = strstr(tbuf, "session");
+                    if (session) {
+                        session += strlen("session");
+                        while (isspace(*session)) {
+                            session++;
+                        }
+                        the_cookie = calloc(1, strlen(session) + 2);
+                        snprintf(the_cookie, strlen(session), "%s", session);
+                        done = TRUE;
+                    }
+                } else {
+                    done = TRUE;
+                }
+            } while (!done);
+
+            fclose(cookie);
+        }
+
+        return the_cookie;
+    }
 }
