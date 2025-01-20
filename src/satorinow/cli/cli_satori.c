@@ -39,31 +39,13 @@
 static char *cli_neuron_register(struct satnow_cli_args *request);
 static char *cli_neuron_unlock(struct satnow_cli_args *request);
 static char *cli_neuron_parent_status(struct satnow_cli_args *request);
+static char *cli_neuron_system_metrics(struct satnow_cli_args *request);
 
 static int http_neuron_unlock(struct neuron_session *session);
 static int http_neuron_proxy_parent_status(struct neuron_session *session);
+static int http_neuron_system_metrics(struct neuron_session *session);
 
 static struct satnow_cli_op satori_cli_operations[] = {
-    {
-        { "neuron", "register", NULL }
-        , "Register a protected neuron."
-        , "Usage: neuron register <ip>:<port> [<nickname>]"
-        , 0
-        , 0
-        , 0
-        , cli_neuron_register
-        , 0
-    },
-    {
-        { "neuron", "unlock", NULL }
-        , "Generate an authenticated session on the specified neuron."
-        , "Usage: neuron unlock (<ip>:<port> | <nickname>)"
-        , 0
-        , 0
-        , 0
-        , cli_neuron_unlock
-        , 0
-    },
     {
         { "neuron", "parent", "status", NULL }
         , "Display the specified neuron's parent status report"
@@ -75,9 +57,29 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
     },
     {
-        { "neuron", "status", NULL }
+{ "neuron", "register", NULL }
+        , "Register a protected neuron."
+        , "Usage: neuron register <ip>:<port> [<nickname>]"
+        , 0
+        , 0
+        , 0
+        , cli_neuron_register
+        , 0
+    },
+    {
+{ "neuron", "system", "metrics", NULL }
+        , "Display neuron system metrics"
+        , "Usage: neuron system metrics (<ip>:<port> | <nickname>) [json]"
+        , 0
+        , 0
+        , 0
+        , cli_neuron_system_metrics
+        , 0
+    },
+    {
+        { "neuron", "unlock", NULL }
         , "Generate an authenticated session on the specified neuron."
-        , "Usage: neuron stats"
+        , "Usage: neuron unlock (<ip>:<port> | <nickname>)"
         , 0
         , 0
         , 0
@@ -508,8 +510,8 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
                             }
 
                             if (!cJSON_IsArray(json)) {
-                                fprintf(stderr, "Error: 'numbers' is not a valid JSON array\n");
-                                cJSON_Delete(json); // Free the JSON object
+                                fprintf(stderr, "Error: response is not a valid JSON array\n");
+                                cJSON_Delete(json);
                                 break;
                             }
 
@@ -611,6 +613,260 @@ static int http_neuron_proxy_parent_status(struct neuron_session *session) {
     snprintf(url, sizeof(url), "http://%s/proxy/parent/status", session->host);
     snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
     printf("http_neuron_proxy_parent_status: %s, %s\n", session->session, response_file);
+
+    curl = curl_easy_init();
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+
+        struct curl_slist *headers = NULL;
+        snprintf(url_data, sizeof(url_data), "Cookie: session=%s", session->session);
+        headers = curl_slist_append(headers, url_data);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)session);
+
+        result = curl_easy_perform(curl);
+
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+    }
+}
+
+static char *cli_neuron_system_metrics(struct satnow_cli_args *request) {
+    struct repository_entry *list = NULL;
+    struct neuron_session *session = NULL;
+    char cli_buf[1024];
+    char *cookie = NULL;
+
+    if (!satnow_repository_password_valid()) {
+        satnow_cli_request_repository_password(request->fd);
+    }
+
+    for (int i = 0; i < request->argc; i++) {
+        printf("ARG[%d]: %s\n", i, request->argv[i]);
+    }
+
+    /** neuron system metrics ( <host:ip> | <nickname> ) [json] */
+    if (request->argc < 4 || request->argc > 5) {
+        satnow_cli_send_response(request->fd, CLI_MORE, request->ref->syntax);
+        satnow_cli_send_response(request->fd, CLI_DONE, "\n");
+        return 0;
+    }
+
+    list = satnow_repository_entry_list();
+    if (list) {
+        struct repository_entry *current = list;
+        session = calloc(1, sizeof(*session));
+        session->buffer = NULL;
+        session->buffer_len = 0;
+
+        while (current) {
+#ifdef __DEBUG__
+            printf("Entry:\n");
+            printf("  Salt: ");
+            for (int i = 0; i < SALT_LEN; i++) printf("%02x", current->salt[i]);
+            printf("\n");
+            printf("  IV: ");
+            for (int i = 0; i < IV_LEN; i++) printf("%02x", current->iv[i]);
+            printf("\n");
+            printf("  Ciphertext length: %lu\n", current->ciphertext_len);
+#endif
+
+            if (current->plaintext) {
+                free(current->plaintext);
+            }
+            current->plaintext = malloc(current->ciphertext_len + 1);
+            if (!current->plaintext) {
+                printf("Out of memory\n");
+            }
+            else {
+                cJSON *json = NULL;
+
+                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
+                current->plaintext[current->plaintext_len] = '\0';
+
+                json = cJSON_Parse(current->plaintext);
+                if (!json) {
+                    fprintf(stderr, "Invalid JSON format.\n");
+                } else {
+                    const cJSON *json_host = cJSON_GetObjectItemCaseSensitive(json, "host");
+                    const cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
+                    const cJSON *json_nickname = cJSON_GetObjectItemCaseSensitive(json, "nickname");
+
+                    session->host = satnow_json_string_unescape(json_host->valuestring);
+                    session->pass = satnow_json_string_unescape(json_password->valuestring);
+                    session->nickname = satnow_json_string_unescape(json_nickname->valuestring);
+
+                    if (!strcasecmp(session->host, request->argv[3]) || !strcasecmp(session->nickname, request->argv[3])) {
+                        http_neuron_unlock(session);
+                        satnow_cli_send_response(request->fd, CLI_MORE, "Neuron Authenticated.\n");
+
+                        printf("http_neuron_system_metrics(BEFORE) buffer len: %ld\n", session->buffer_len);
+                        http_neuron_system_metrics(session);
+                        satnow_cli_send_response(request->fd, CLI_MORE, "Neuron system metrics to follow:\n\n");
+                        if (request->argc == 5 && !strcasecmp(request->argv[4], "json")) {
+                            satnow_cli_send_response(request->fd, CLI_MORE, session->buffer);
+                        } else {
+                            char tbuf[1023];
+                            cJSON *json_response = cJSON_Parse(session->buffer);
+
+                            if (json_response == NULL) {
+                                fprintf(stderr, "Error parsing JSON\n");
+                                break;
+                            }
+
+                            cJSON *boot_time = cJSON_GetObjectItem(json_response, "boot_time");
+                            cJSON *cpu = cJSON_GetObjectItem(json_response, "cpu");
+                            cJSON *cpu_count = cJSON_GetObjectItem(json_response, "cpu_count");
+                            cJSON *cpu_usage_percent = cJSON_GetObjectItem(json_response, "cpu_usage_percent");
+
+                            cJSON *disk = cJSON_GetObjectItem(json_response, "disk");
+                            cJSON *disk_free = cJSON_GetObjectItem(disk, "free");
+                            cJSON *disk_percent = cJSON_GetObjectItem(disk, "percent");
+                            cJSON *disk_total = cJSON_GetObjectItem(disk, "total");
+                            cJSON *disk_used = cJSON_GetObjectItem(disk, "used");
+
+                            cJSON *memory = cJSON_GetObjectItem(json_response, "memory");
+                            cJSON *memory_active = cJSON_GetObjectItem(memory, "active");
+                            cJSON *memory_available = cJSON_GetObjectItem(memory, "available");
+                            cJSON *memory_buffers = cJSON_GetObjectItem(memory, "buffers");
+                            cJSON *memory_cached = cJSON_GetObjectItem(memory, "cached");
+                            cJSON *memory_free = cJSON_GetObjectItem(memory, "free");
+                            cJSON *memory_inactive = cJSON_GetObjectItem(memory, "inactive");
+                            cJSON *memory_percent = cJSON_GetObjectItem(memory, "percent");
+                            cJSON *memory_shared = cJSON_GetObjectItem(memory, "shared");
+                            cJSON *memory_slab = cJSON_GetObjectItem(memory, "slab");
+                            cJSON *memory_total = cJSON_GetObjectItem(memory, "total");
+                            cJSON *memory_used = cJSON_GetObjectItem(memory, "used");
+
+                            cJSON *memory_available_percent = cJSON_GetObjectItem(json_response, "memory_available_percent");
+                            cJSON *memory_total_gb = cJSON_GetObjectItem(json_response, "memory_total_gb");
+
+                            cJSON *swap = cJSON_GetObjectItem(json_response, "swap");
+                            cJSON *swap_free = cJSON_GetObjectItem(swap, "free");
+                            cJSON *swap_percent = cJSON_GetObjectItem(swap, "percent");
+                            cJSON *swap_sin = cJSON_GetObjectItem(swap, "sin");
+                            cJSON *swap_sout = cJSON_GetObjectItem(swap, "sout");
+                            cJSON *swap_total = cJSON_GetObjectItem(swap, "total");
+                            cJSON *swap_used = cJSON_GetObjectItem(swap, "used");
+
+                            cJSON *timestamp = cJSON_GetObjectItem(json_response, "timestamp");
+                            cJSON *uptime = cJSON_GetObjectItem(json_response, "uptime");
+                            cJSON *version = cJSON_GetObjectItem(json_response, "version");
+
+                            snprintf(tbuf, sizeof(tbuf)
+                                , "\t%25s: %f\n\t%25s: %s\n\t%25s: %d\n\t%25s: %f\n"
+                                , "BOOT TIME", cJSON_IsNumber(boot_time) ? boot_time->valuedouble : 0
+                                , "CPU", cJSON_IsString(cpu) ? cpu->valuestring : "N/A"
+                                , "CPU COUNT", cJSON_IsNumber(cpu_count) ? cpu_count->valueint : 0
+                                , "CPU USAGE PERCENT", cJSON_IsNumber(cpu_usage_percent) ? cpu_usage_percent->valuedouble : 0);
+
+                            satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
+
+                            snprintf(tbuf, sizeof(tbuf)
+                                , "\t%25s: %.0f\n\t%25s: %f\n\t%25s: %.0f\n\t%25s: %.0f\n"
+                                , "DISK FREE", cJSON_IsNumber(disk_free) ? disk_free->valuedouble : 0
+                                , "DISK PERCENT", cJSON_IsNumber(disk_percent) ? disk_percent->valuedouble : 0
+                                , "DISK TOTAL", cJSON_IsNumber(disk_total) ? disk_total->valuedouble : 0
+                                , "DISK USED", cJSON_IsNumber(disk_used) ? disk_used->valuedouble : 0);
+
+                            satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
+
+                            snprintf(tbuf, sizeof(tbuf)
+                                , "\t%25s: %.0f\n\t%25s: %.0f\n\t%25s: %.0f\n\t%25s: %.0f\n\t%25s: %.0f\n\t%25s: %.0f\n\t%25s: %f\n\t%25s: %.0f\n\t%25s: %.0f\n\t%25s: %.0f\n\t%25s: %.0f\n"
+                                , "MEMORY ACTIVE", cJSON_IsNumber(memory_active) ? memory_active->valuedouble : 0
+                                , "MEMORY AVAILABLE", cJSON_IsNumber(memory_available) ? memory_available->valuedouble : 0
+                                , "MEMORY BUFFERS", cJSON_IsNumber(memory_buffers) ? memory_buffers->valuedouble : 0
+                                , "MEMORY CACHED", cJSON_IsNumber(memory_cached) ? memory_cached->valuedouble : 0
+                                , "MEMORY FREE", cJSON_IsNumber(memory_free) ? memory_free->valuedouble : 0
+                                , "MEMORY INACTIVE", cJSON_IsNumber(memory_inactive) ? memory_inactive->valuedouble : 0
+                                , "MEMORY PERCENT", cJSON_IsNumber(memory_percent) ? memory_percent->valuedouble : 0
+                                , "MEMORY SHARED", cJSON_IsNumber(memory_shared) ? memory_shared->valuedouble : 0
+                                , "MEMORY SLAB", cJSON_IsNumber(memory_slab) ? memory_slab->valuedouble : 0
+                                , "MEMORY TOTAL", cJSON_IsNumber(memory_total) ? memory_total->valuedouble : 0
+                                , "MEMORY USED", cJSON_IsNumber(memory_used) ? memory_used->valuedouble : 0);
+
+                            satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
+
+                            snprintf(tbuf, sizeof(tbuf)
+                                , "\t%25s: %f\n\t%25s: %d\n"
+                                , "MEMORY AVAILABLE PERCENT", cJSON_IsNumber(memory_available_percent) ? memory_available_percent->valuedouble : 0
+                                , "MEMORY TOTAL GB", cJSON_IsNumber(memory_total_gb) ? memory_total_gb->valueint : 0);
+
+                            satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
+
+                            snprintf(tbuf, sizeof(tbuf)
+                                , "\t%25s: %d\n\t%25s: %f\n\t%25s: %d\n\t%25s: %d\n\t%25s: %d\n\t%25s: %d\n"
+                                , "SWAP FREE", cJSON_IsNumber(swap_free) ? swap_free->valueint : 0
+                                , "SWAP PERCENT", cJSON_IsNumber(swap_percent) ? swap_percent->valuedouble : 0
+                                , "SWAP SIN", cJSON_IsNumber(swap_sin) ? swap_sin->valueint : 0
+                                , "SWAP SOUT", cJSON_IsNumber(swap_sout) ? swap_sout->valueint : 0
+                                , "SWAP TOTAL", cJSON_IsNumber(swap_total) ? swap_total->valueint : 0
+                                , "SWAP USED", cJSON_IsNumber(swap_used) ? swap_used->valueint : 0);
+
+                            satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
+
+                            snprintf(tbuf, sizeof(tbuf)
+                                , "\t%25s: %f\n\t%25s: %f\n\t%25s: %s\n"
+                                , "TIMESTAMP", cJSON_IsNumber(timestamp) ? timestamp->valuedouble : 0
+                                , "UPTIME", cJSON_IsNumber(uptime) ? uptime->valuedouble : 0
+                                , "VERSION", cJSON_IsString(version) ? version->valuestring : 0);
+
+                            satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
+
+                            // Cleanup
+                            cJSON_Delete(json_response);
+                        }
+                        satnow_cli_send_response(request->fd, CLI_MORE, "\n");
+                    }
+
+                    if (session->host) {
+                        free(session->host);
+                    }
+                    if (session->pass) {
+                        free(session->pass);
+                    }
+                    if (session->nickname) {
+                        free(session->nickname);
+                    }
+                    if (session->session) {
+                        free(session->session);
+                    }
+                    if (session->buffer) {
+                        free(session->buffer);
+                    }
+                }
+                cJSON_Delete(json);
+            }
+            current = current->next;
+        }
+        satnow_repository_entry_list_free(list);
+        free(session);
+    }
+    satnow_cli_send_response(request->fd, CLI_DONE, "\n");
+    return 0;
+}
+
+static int http_neuron_system_metrics(struct neuron_session *session) {
+    char url[URL_MAX];
+    char url_data[URL_DATA_MAX];
+    char response_file[PATH_MAX];
+    CURL *curl;
+    CURLcode result;
+
+    time_t now = time(NULL);
+    if (now == -1) {
+        perror("Failed to get current time");
+        return 0;
+    }
+
+    snprintf(url, sizeof(url), "http://%s/system_metrics", session->host);
+    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
+    printf("http_neuron_system_metrics: %s, %s\n", session->session, response_file);
 
     curl = curl_easy_init();
     if (curl) {
