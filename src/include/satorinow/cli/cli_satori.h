@@ -24,4 +24,13 @@
 
 int satnow_register_satori_cli_operations();
 
+struct neuron_session {
+    char *host;
+    char *pass;
+    char *nickname;
+    char *session;
+    char *buffer;
+    size_t buffer_len;
+};
+
 #endif //CLI_SATORI_H

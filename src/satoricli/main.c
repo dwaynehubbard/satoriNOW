@@ -91,15 +91,17 @@ static void read_fixed_header(int client_fd, int *op_code, int *bytes_to_come) {
  * @param bytes_to_come
  */
 static void read_message(int client_fd, int bytes_to_come) {
-    char buffer[BUFFER_SIZE];
-    memset(buffer, 0, BUFFER_SIZE);
+    char *buffer;
 
     if (bytes_to_come > 0) {
+        buffer = calloc(1, bytes_to_come + 1);
         if (read(client_fd, buffer, bytes_to_come) != bytes_to_come) {
             perror("Error reading message");
+            free(buffer);
             exit(EXIT_FAILURE);
         }
         printf("%s", buffer);
+        free(buffer);
     }
 }
 
