@@ -493,11 +493,15 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
 
                         printf("http_neuron_proxy_parent_status(BEFORE) buffer len: %ld\n", session->buffer_len);
                         http_neuron_proxy_parent_status(session);
-                        satnow_cli_send_response(request->fd, CLI_MORE, "Neuron parent status to follow:\n");
+                        satnow_cli_send_response(request->fd, CLI_MORE, "Neuron parent status to follow:\n\n");
                         if (request->argc == 5 && !strcasecmp(request->argv[4], "json")) {
                             satnow_cli_send_response(request->fd, CLI_MORE, session->buffer);
                         } else {
+                            char tbuf[1023];
+                            int neuron_count = 0;
+                            cJSON *element = NULL;
                             cJSON *json = cJSON_Parse(session->buffer);
+
                             if (json == NULL) {
                                 fprintf(stderr, "Error parsing JSON\n");
                                 break;
@@ -509,13 +513,22 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
                                 break;
                             }
 
-                            cJSON *element = NULL;
+                            snprintf(tbuf, sizeof(tbuf)
+                                        , "%6s\t%6s\t%7s\t%4s\t%10s\t%10s\t%8s\t%7s\t\t%s\n"
+                                        , "PARENT"
+                                        , "CHILD"
+                                        , "CHARITY"
+                                        , "AUTO"
+                                        , "WALLET"
+                                        , "VAULT"
+                                        , "REWARD"
+                                        , "POINTED"
+                                        , "DATE"
+                                    );
+                            satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
+
                             cJSON_ArrayForEach(element, json) {
                                 if (cJSON_IsObject(element)) {
-                                    char tbuf[1023];
-                                    char addr1[12];
-                                    char addr2[12];
-
                                     cJSON *parent = cJSON_GetObjectItem(element, "parent");
                                     cJSON *child = cJSON_GetObjectItem(element, "child");
                                     cJSON *charity = cJSON_GetObjectItem(element, "charity");
@@ -530,24 +543,28 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
                                     size_t vaultaddress_len = strlen(vaultaddress->valuestring);
 
                                     snprintf(tbuf, sizeof(tbuf)
-                                        , "%6d\t%6d\t%d\t%d\t%.4s...%.4s\t%.4s...%.4s\t%f\t%d\t%s\n"
+                                        , "%6d\t%6d\t%7s\t%4s\t%.4s...%.4s\t%.4s...%.4s\t%1.8f\t%7s\t\t%s\n"
                                         , cJSON_IsNumber(parent) ? parent->valueint : -1
                                         , cJSON_IsNumber(child) ? child->valueint : -1
-                                        , cJSON_IsNumber(charity) ? charity->valueint : -1
-                                        , cJSON_IsNumber(automatic) ? automatic->valueint : -1
+                                        , cJSON_IsNumber(charity) ? charity->valueint == 0 ? "NO":"YES" : "N/A"
+                                        , cJSON_IsNumber(automatic) ? automatic->valueint == 0 ? "NO":"YES" : "N/A"
                                         , address->valuestring, address->valuestring + address_len - 4
                                         , vaultaddress->valuestring, vaultaddress->valuestring + vaultaddress_len - 4
                                         , cJSON_IsNumber(reward) ? reward->valuedouble : 0.0
-                                        , cJSON_IsNumber(pointed) ? pointed->valueint : -1
+                                        , cJSON_IsNumber(pointed) ? pointed->valueint == 0 ? "NO":"YES" : "N/A"
                                         , cJSON_IsString(ts) ? ts->valuestring : "N/A"
                                     );
 
                                     satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
+                                    neuron_count++;
                                 }
                             }
 
                             // Cleanup
                             cJSON_Delete(json);
+
+                            snprintf(tbuf, sizeof(tbuf), "\nNEURON '%s' HAS %d DELEGATED NEURONS\n", request->argv[3], neuron_count);
+                            satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
                         }
                         satnow_cli_send_response(request->fd, CLI_MORE, "\n");
                     }
