@@ -29,6 +29,7 @@
 #include <satorinow.h>
 #include "satorinow/cli.h"
 #include "satorinow/cli/cli_satori.h"
+#include "satorinow/http/http_neuron.h"
 #include "satorinow/repository.h"
 #include "satorinow/json.h"
 
@@ -40,10 +41,7 @@ static char *cli_neuron_register(struct satnow_cli_args *request);
 static char *cli_neuron_unlock(struct satnow_cli_args *request);
 static char *cli_neuron_parent_status(struct satnow_cli_args *request);
 static char *cli_neuron_system_metrics(struct satnow_cli_args *request);
-
-static int http_neuron_unlock(struct neuron_session *session);
-static int http_neuron_proxy_parent_status(struct neuron_session *session);
-static int http_neuron_system_metrics(struct neuron_session *session);
+static char *cli_neuron_stats(struct satnow_cli_args *request);
 
 static struct satnow_cli_op satori_cli_operations[] = {
     {
@@ -64,6 +62,15 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
         , 0
         , cli_neuron_register
+        , 0
+    },{
+        { "neuron", "stats", NULL }
+        , "Display neuron stats"
+        , "Usage: neuron stats [(<ip>:<port> | <nickname>)]"
+        , 0
+        , 0
+        , 0
+        , cli_neuron_stats
         , 0
     },
     {
@@ -297,7 +304,7 @@ static char *cli_neuron_unlock(struct satnow_cli_args *request) {
 
                     if (!strcasecmp(session->host, request->argv[2]) || !strcasecmp(session->nickname, request->argv[2])) {
                         char cookie_buffer[BUFFER_SIZE];
-                        http_neuron_unlock(session);
+                        satnow_http_neuron_unlock(session);
                         snprintf(cookie_buffer, BUFFER_SIZE, "%s\n", cookie);
                         satnow_cli_send_response(request->fd, CLI_MORE, "Neuron Unlocked. Session cookie to follow:\n");
                         satnow_cli_send_response(request->fd, CLI_MORE, cookie_buffer);
@@ -315,112 +322,6 @@ static char *cli_neuron_unlock(struct satnow_cli_args *request) {
         free(session);
     }
     satnow_cli_send_response(request->fd, CLI_DONE, "\n");
-    return 0;
-}
-
-size_t write_callback(void *contents, size_t size, size_t nmemb, void *context) {
-    size_t total_size = size * nmemb; // Calculate total data size
-    struct neuron_session *data = (struct neuron_session *)context;
-    printf("write_callback() increasing buffer [%ld] by [%ld]\n", data->buffer_len, total_size);
-
-    // Reallocate buffer to fit the new data
-    char *ptr = realloc(data->buffer, data->buffer_len + total_size + 1);
-    if (ptr == NULL) {
-        fprintf(stderr, "realloc() failed\n");
-        return 0; // Returning 0 tells libcurl to stop the operation
-    }
-
-    data->buffer = ptr;
-    memcpy(&(data->buffer[data->buffer_len]), contents, total_size);
-    data->buffer_len += total_size;
-    data->buffer[data->buffer_len] = '\0'; // Null-terminate the string
-
-    return total_size;
-}
-
-static int http_neuron_unlock(struct neuron_session *session) {
-    char url[URL_MAX];
-    char url_data[URL_DATA_MAX];
-    char cookie_file[PATH_MAX];
-    char response_file[PATH_MAX];
-    char *the_cookie = NULL;
-    CURL *curl;
-    CURLcode result;
-
-    snprintf(url, sizeof(url), "http://%s/unlock", session->host);
-    snprintf(url_data, sizeof(url_data), "passphrase=%s&next=http://%s/vault", session->pass, session->host);
-
-    time_t now = time(NULL);
-    if (now == -1) {
-        perror("Failed to get current time");
-        return -1;
-    }
-    snprintf(cookie_file, sizeof(cookie_file), "%s/%s-%ld.cookie", satnow_config_directory(), session->host, now);
-    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
-    printf("http_neuron_unlock: %s, %s\n", cookie_file, response_file);
-
-    curl = curl_easy_init();
-    if (curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, url_data);
-
-        struct curl_slist *headers = NULL;
-        headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded");
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-        curl_easy_setopt(curl, CURLOPT_COOKIEJAR, cookie_file);
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-
-        /*
-        FILE *response = fopen(response_file, "w+");
-        if (response) {
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
-        }
-        */
-
-        result = curl_easy_perform(curl);
-        if (result != CURLE_OK) {
-            fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(result));
-        }
-
-        /*
-        if (response_file) {
-            fclose(response_file);
-        }
-        */
-
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
-
-        FILE *cookie = fopen(cookie_file, "r");
-        if (cookie) {
-            char tbuf[1024];
-            int done = FALSE;
-
-            do {
-                memset(tbuf, 0, sizeof(tbuf));
-                fgets(tbuf, 1023, cookie);
-                if (strlen(tbuf)) {
-                    char *s = strstr(tbuf, "session");
-                    if (s) {
-                        s += strlen("session");
-                        while (isspace(*s)) {
-                            s++;
-                        }
-                        session->session = calloc(1, strlen(s) + 2);
-                        strncpy(session->session, s, strlen(s) + 1);
-                        done = TRUE;
-                    }
-                } else {
-                    done = TRUE;
-                }
-            } while (!done);
-
-            fclose(cookie);
-        }
-    }
-
     return 0;
 }
 
@@ -490,11 +391,11 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
                     session->nickname = satnow_json_string_unescape(json_nickname->valuestring);
 
                     if (!strcasecmp(session->host, request->argv[3]) || !strcasecmp(session->nickname, request->argv[3])) {
-                        http_neuron_unlock(session);
+                        satnow_http_neuron_unlock(session);
                         satnow_cli_send_response(request->fd, CLI_MORE, "Neuron Authenticated.\n");
 
-                        printf("http_neuron_proxy_parent_status(BEFORE) buffer len: %ld\n", session->buffer_len);
-                        http_neuron_proxy_parent_status(session);
+                        printf("satnow_http_neuron_proxy_parent_status(BEFORE) buffer len: %ld\n", session->buffer_len);
+                        satnow_http_neuron_proxy_parent_status(session);
                         satnow_cli_send_response(request->fd, CLI_MORE, "Neuron parent status to follow:\n\n");
                         if (request->argc == 5 && !strcasecmp(request->argv[4], "json")) {
                             satnow_cli_send_response(request->fd, CLI_MORE, session->buffer);
@@ -597,45 +498,6 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
     return 0;
 }
 
-static int http_neuron_proxy_parent_status(struct neuron_session *session) {
-    char url[URL_MAX];
-    char url_data[URL_DATA_MAX];
-    char response_file[PATH_MAX];
-    CURL *curl;
-    CURLcode result;
-
-    time_t now = time(NULL);
-    if (now == -1) {
-        perror("Failed to get current time");
-        return 0;
-    }
-
-    snprintf(url, sizeof(url), "http://%s/proxy/parent/status", session->host);
-    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
-    printf("http_neuron_proxy_parent_status: %s, %s\n", session->session, response_file);
-
-    curl = curl_easy_init();
-    if (curl) {
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
-
-        struct curl_slist *headers = NULL;
-        snprintf(url_data, sizeof(url_data), "Cookie: session=%s", session->session);
-        headers = curl_slist_append(headers, url_data);
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)session);
-
-        result = curl_easy_perform(curl);
-
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
-    }
-}
-
 static char *cli_neuron_system_metrics(struct satnow_cli_args *request) {
     struct repository_entry *list = NULL;
     struct neuron_session *session = NULL;
@@ -702,11 +564,11 @@ static char *cli_neuron_system_metrics(struct satnow_cli_args *request) {
                     session->nickname = satnow_json_string_unescape(json_nickname->valuestring);
 
                     if (!strcasecmp(session->host, request->argv[3]) || !strcasecmp(session->nickname, request->argv[3])) {
-                        http_neuron_unlock(session);
+                        satnow_http_neuron_unlock(session);
                         satnow_cli_send_response(request->fd, CLI_MORE, "Neuron Authenticated.\n");
 
-                        printf("http_neuron_system_metrics(BEFORE) buffer len: %ld\n", session->buffer_len);
-                        http_neuron_system_metrics(session);
+                        printf("satnow_http_neuron_system_metrics(BEFORE) buffer len: %ld\n", session->buffer_len);
+                        satnow_http_neuron_system_metrics(session);
                         satnow_cli_send_response(request->fd, CLI_MORE, "Neuron system metrics to follow:\n\n");
                         if (request->argc == 5 && !strcasecmp(request->argv[4], "json")) {
                             satnow_cli_send_response(request->fd, CLI_MORE, session->buffer);
@@ -851,41 +713,109 @@ static char *cli_neuron_system_metrics(struct satnow_cli_args *request) {
     return 0;
 }
 
-static int http_neuron_system_metrics(struct neuron_session *session) {
-    char url[URL_MAX];
-    char url_data[URL_DATA_MAX];
-    char response_file[PATH_MAX];
-    CURL *curl;
-    CURLcode result;
+static char *cli_neuron_stats(struct satnow_cli_args *request) {
+    struct repository_entry *list = NULL;
+    struct neuron_session *session = NULL;
+    char cli_buf[1024];
+    char *cookie = NULL;
 
-    time_t now = time(NULL);
-    if (now == -1) {
-        perror("Failed to get current time");
+    if (!satnow_repository_password_valid()) {
+        satnow_cli_request_repository_password(request->fd);
+    }
+
+    for (int i = 0; i < request->argc; i++) {
+        printf("ARG[%d]: %s\n", i, request->argv[i]);
+    }
+
+    /** neuron stats ( <host:ip> | <nickname> ) */
+    if (request->argc < 2 || request->argc > 3) {
+        satnow_cli_send_response(request->fd, CLI_MORE, request->ref->syntax);
+        satnow_cli_send_response(request->fd, CLI_DONE, "\n");
         return 0;
     }
 
-    snprintf(url, sizeof(url), "http://%s/system_metrics", session->host);
-    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
-    printf("http_neuron_system_metrics: %s, %s\n", session->session, response_file);
+    list = satnow_repository_entry_list();
+    if (list) {
+        struct repository_entry *current = list;
 
-    curl = curl_easy_init();
-    if (curl) {
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+        while (current) {
+            session = calloc(1, sizeof(*session));
+            session->buffer = NULL;
+            session->buffer_len = 0;
 
-        struct curl_slist *headers = NULL;
-        snprintf(url_data, sizeof(url_data), "Cookie: session=%s", session->session);
-        headers = curl_slist_append(headers, url_data);
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+#ifdef __DEBUG__
+            printf("Entry:\n");
+            printf("  Salt: ");
+            for (int i = 0; i < SALT_LEN; i++) printf("%02x", current->salt[i]);
+            printf("\n");
+            printf("  IV: ");
+            for (int i = 0; i < IV_LEN; i++) printf("%02x", current->iv[i]);
+            printf("\n");
+            printf("  Ciphertext length: %lu\n", current->ciphertext_len);
+#endif
 
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)session);
+            if (current->plaintext) {
+                free(current->plaintext);
+            }
+            current->plaintext = malloc(current->ciphertext_len + 1);
+            if (!current->plaintext) {
+                printf("Out of memory\n");
+            }
+            else {
+                cJSON *json = NULL;
 
-        result = curl_easy_perform(curl);
+                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
+                current->plaintext[current->plaintext_len] = '\0';
 
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
+                json = cJSON_Parse(current->plaintext);
+                if (!json) {
+                    fprintf(stderr, "Invalid JSON format.\n");
+                } else {
+                    char tbuf[1023];
+                    const cJSON *json_host = cJSON_GetObjectItemCaseSensitive(json, "host");
+                    const cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
+                    const cJSON *json_nickname = cJSON_GetObjectItemCaseSensitive(json, "nickname");
+
+                    session->host = satnow_json_string_unescape(json_host->valuestring);
+                    session->pass = satnow_json_string_unescape(json_password->valuestring);
+                    session->nickname = satnow_json_string_unescape(json_nickname->valuestring);
+
+                    if (request->argc == 2
+                        || !strcasecmp(session->host, request->argv[2])
+                        || !strcasecmp(session->nickname, request->argv[2])) {
+
+                        satnow_http_neuron_unlock(session);
+                        printf("satnow_http_neuron_stats(BEFORE) buffer len: %ld\n", session->buffer_len);
+                        satnow_http_neuron_stats(session);
+                        snprintf(tbuf, sizeof(tbuf), "%s: %s\n", session->nickname ? session->nickname : session->host, session->buffer);
+                        satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
+                    }
+
+                    if (session->host) {
+                        free(session->host);
+                    }
+                    if (session->pass) {
+                        free(session->pass);
+                    }
+                    if (session->nickname) {
+                        free(session->nickname);
+                    }
+                    if (session->session) {
+                        free(session->session);
+                    }
+                    if (session->buffer) {
+                        free(session->buffer);
+                    }
+
+                    free(session);
+                }
+
+                cJSON_Delete(json);
+            }
+            current = current->next;
+        }
+        satnow_repository_entry_list_free(list);
     }
+    satnow_cli_send_response(request->fd, CLI_DONE, "\n");
+    return 0;
 }

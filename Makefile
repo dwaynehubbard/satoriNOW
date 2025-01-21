@@ -10,6 +10,7 @@ INSTALL_DIR = /usr/local/satori-now/bin
 
 # Source files
 SATORINOW_SRC = $(SATORINOW_SRC_DIR)/main.c \
+	$(SATORINOW_SRC_DIR)/http/http_neuron.c \
 	$(SATORINOW_SRC_DIR)/cli.c \
 	$(SATORINOW_SRC_DIR)/cli/cli_satori.c \
 	$(SATORINOW_SRC_DIR)/encrypt.c \

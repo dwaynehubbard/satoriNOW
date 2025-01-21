@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Design Pattern Solutions Inc
+* Copyright (c) 2025 Design Pattern Solutions Inc
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -19,9 +19,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef CLI_SATORI_H
-#define CLI_SATORI_H
+#ifndef HTTP_NEURON_H
+#define HTTP_NEURON_H
 
-int satnow_register_satori_cli_operations();
+#include <stdlib.h>
 
-#endif //CLI_SATORI_H
+struct neuron_session {
+    char *host;
+    char *pass;
+    char *nickname;
+    char *session;
+    char *buffer;
+    size_t buffer_len;
+};
+
+int satnow_http_neuron_unlock(struct neuron_session *session);
+int satnow_http_neuron_proxy_parent_status(struct neuron_session *session);
+int satnow_http_neuron_system_metrics(struct neuron_session *session);
+int satnow_http_neuron_stats(struct neuron_session *session);
+
+
+#endif //HTTP_NEURON_H
