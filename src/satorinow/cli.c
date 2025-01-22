@@ -45,24 +45,24 @@ static char *cli_show_help(struct satnow_cli_args *request);
 static char *cli_shutdown(struct satnow_cli_args *request);
 
 static struct satnow_cli_op satori_cli_operations[] = {
-        {
-                { "help", NULL }
-                , "Display supported commands"
-                , "Usage: help"
-                , 0
-                , 0
-                , 0
-                , cli_show_help
-                , 0
-        },{
-{ "shutdown", NULL }
-            , "Shutdown the SatoriNOW daemon"
-            , "Usage: shutdown"
-            , 0
-            , 0
-            , 0
-            , cli_shutdown
-            , 0
+    {
+        { "help", NULL }
+        , "Display supported commands"
+        , "Usage: help"
+        , 0
+        , 0
+        , 0
+        , cli_show_help
+        , 0
+    },{
+        { "shutdown", NULL }
+        , "Shutdown the SatoriNOW daemon"
+        , "Usage: shutdown"
+        , 0
+        , 0
+        , 0
+        , cli_shutdown
+        , 0
     },
 };
 
