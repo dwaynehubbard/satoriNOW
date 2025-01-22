@@ -190,12 +190,9 @@ static char *cli_repository_backup(struct satnow_cli_args *request) {
         snprintf(filename, sizeof(filename), "%s/%s", satnow_config_directory(), request->argv[2]);
     }
 
-    pthread_mutex_lock(&repository_mutex);
-
     FILE *repo = fopen(filename, "a+b");
     if (!repo) {
         perror("Failed to open repository backup destination");
-        pthread_mutex_unlock(&repository_mutex);
         return 0;
     }
     satnow_cli_send_response(request->fd, CLI_MORE, "Backing up repository...\n");
@@ -225,7 +222,6 @@ static char *cli_repository_backup(struct satnow_cli_args *request) {
     snprintf(tbuf, sizeof(tbuf), "Your repository was backed up to %s\n", filename);
     satnow_cli_send_response(request->fd, CLI_DONE, tbuf);
     fclose(repo);
-    pthread_mutex_unlock(&repository_mutex);
     return 0;
 }
 
