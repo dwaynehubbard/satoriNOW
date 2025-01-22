@@ -34,6 +34,10 @@
 #include "satorinow/json.h"
 
 
+/**
+ * size_t write_callback(void *contents, size_t size, size_t nmemb, void *context)
+ * HTTP write callback function
+ */
 size_t write_callback(void *contents, size_t size, size_t nmemb, void *context) {
     size_t total_size = size * nmemb; // Calculate total data size
     struct neuron_session *data = (struct neuron_session *)context;
@@ -133,6 +137,10 @@ int satnow_http_neuron_unlock(struct neuron_session *session) {
     return 0;
 }
 
+/**
+ * int satnow_http_neuron_proxy_parent_status(struct neuron_session *session)
+ * Generate HTTP request to <neuron>/proxy/parent/status
+ */
 int satnow_http_neuron_proxy_parent_status(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
@@ -143,7 +151,7 @@ int satnow_http_neuron_proxy_parent_status(struct neuron_session *session) {
     time_t now = time(NULL);
     if (now == -1) {
         perror("Failed to get current time");
-        return 0;
+        return -1;
     }
 
     snprintf(url, sizeof(url), "http://%s/proxy/parent/status", session->host);
@@ -170,8 +178,14 @@ int satnow_http_neuron_proxy_parent_status(struct neuron_session *session) {
         curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
     }
+
+    return 0;
 }
 
+/**
+ * int satnow_http_neuron_system_metrics(struct neuron_session *session)
+ * Generate HTTP request to <neuron>/system_metrics
+ */
 int satnow_http_neuron_system_metrics(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];

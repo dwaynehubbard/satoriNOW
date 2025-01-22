@@ -50,5 +50,7 @@ enum OpCode {
 };
 
 const char *satnow_config_directory();
+void satnow_shutdown(int signum);
+int satnow_do_shutdown();
 
 #endif //SATORINOW_H

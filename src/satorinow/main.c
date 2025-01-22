@@ -45,6 +45,10 @@ const char *satnow_config_directory() {
     return config_dir;
 }
 
+int satnow_do_shutdown() {
+    return do_shutdown;
+}
+
 /**
  * void shutdown(int signum)
  * Trigger shutdown

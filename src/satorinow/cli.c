@@ -33,11 +33,16 @@
 #include "satorinow/repository.h"
 
 static int server_fd = -1;
+pthread_mutex_t server_fd_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static struct satnow_cli_op *op_list_head = NULL;
+pthread_mutex_t op_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static int op_list_size = 0;
 
 static void send_header(int client_fd, int op_code, int bytes_to_come);
 static char *cli_show_help(struct satnow_cli_args *request);
+static char *cli_shutdown(struct satnow_cli_args *request);
 
 static struct satnow_cli_op satori_cli_operations[] = {
         {
@@ -49,32 +54,70 @@ static struct satnow_cli_op satori_cli_operations[] = {
                 , 0
                 , cli_show_help
                 , 0
-        },
+        },{
+{ "shutdown", NULL }
+            , "Shutdown the SatoriNOW daemon"
+            , "Usage: shutdown"
+            , 0
+            , 0
+            , 0
+            , cli_shutdown
+            , 0
+    },
 };
 
 
 /**
- * show_help(int client_fd)
+ * cli_shutdown(int client_fd)
+ * Display the available CLI operations
+ * @param client_fd
+ */
+static char *cli_shutdown(struct satnow_cli_args *request) {
+    satnow_cli_send_response(request->fd, CLI_DONE, "Shutting down\n");
+    satnow_shutdown(0);
+    return 0;
+}
+
+
+/**
+ * cli_show_help(int client_fd)
  * Display the available CLI operations
  * @param client_fd
  */
 static char *cli_show_help(struct satnow_cli_args *request) {
     char response[BUFFER_SIZE];
-    struct satnow_cli_op *current = op_list_head;
+    struct satnow_cli_op *current = NULL;
+
+    pthread_mutex_lock(&op_list_mutex);
+    current = op_list_head;
 
     while (current) {
-        snprintf(response, sizeof(response), "%s", current->command[0]);
+        size_t response_len = snprintf(response, sizeof(response), "%s", current->command[0]);
         for (int i = 1; current->command[i]; i++) {
-            snprintf(&response[strlen(response)], sizeof(response) - strlen(response) - 1, " %s", current->command[i]);
+            response_len += snprintf(response + response_len, sizeof(response) - response_len, " %s", current->command[i]);
+            if (response_len >= sizeof(response) - 1) {
+                /** Don't exceed the buffer */
+                break;
+            }
         }
-        snprintf(&response[strlen(response)], sizeof(response) - strlen(response) - 1, " - %s\n", current->description);
+
+        response_len += snprintf(response + response_len, sizeof(response) - response_len, " - %s\n", current->description);
+        if (response_len >= sizeof(response) - 1) {
+            response[sizeof(response) - 1] = '\0';
+        }
+
         satnow_cli_send_response(request->fd, CLI_MORE, response);
         current = current->next;
     }
-    snprintf(response, BUFFER_SIZE, "\n");
+
+    pthread_mutex_unlock(&op_list_mutex);
+
+    snprintf(response, sizeof(response), "\n");
     satnow_cli_send_response(request->fd, CLI_DONE, response);
-    return 0;
+
+    return NULL;
 }
+
 
 /**
  * int satnow_register_core_cli_operations()
@@ -82,90 +125,139 @@ static char *cli_show_help(struct satnow_cli_args *request) {
  * @return
  */
 int satnow_register_core_cli_operations() {
-    for (int i = 0; i < (int)(sizeof(satori_cli_operations) / sizeof(satori_cli_operations[0])); i++) {
-        for (int j = 0; j < SATNOW_CLI_MAX_COMMAND_WORDS; j++) {
-            if (satori_cli_operations[i].command[j] == NULL) {
-                break;
-            }
-            printf(" %s", satori_cli_operations[i].command[j]);
+    size_t num_operations = sizeof(satori_cli_operations) / sizeof(satori_cli_operations[0]);
+
+    for (size_t i = 0; i < num_operations; i++) {
+        for (int j = 0; j < SATNOW_CLI_MAX_COMMAND_WORDS && satori_cli_operations[i].command[j] != NULL; j++) {
+            printf("%s ", satori_cli_operations[i].command[j]);
         }
         printf("\n");
         satnow_cli_register(&satori_cli_operations[i]);
     }
+
     return 0;
 }
 
+
 /**
- * void *satnow_cli_exec()
+ * void *satnow_cli_start()
  * Main processing loop for the CLI socket engine
  * @return
  */
 void *satnow_cli_start() {
     struct sockaddr_un server_addr;
     char buffer[BUFFER_SIZE];
-    int server_fd, client_fd;
+    int client_fd;
     ssize_t rx;
 
-    /** Create the Unix Domain Socket */
-    if ((server_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+    pthread_mutex_lock(&server_fd_mutex);
+
+    server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (server_fd == -1) {
         perror("satorinow socket");
+        pthread_mutex_unlock(&server_fd_mutex);
         pthread_exit(NULL);
     }
 
-    /** Configure the socket */
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sun_family = AF_UNIX;
     strncpy(server_addr.sun_path, SOCKET_PATH, sizeof(server_addr.sun_path) - 1);
 
-    /** Bind the socket */
     unlink(SOCKET_PATH);
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
         perror("satorinow bind");
         close(server_fd);
+        pthread_mutex_unlock(&server_fd_mutex);
         pthread_exit(NULL);
     }
 
-    /** Listen for connections */
     if (listen(server_fd, 5) == -1) {
         perror("satorinow listen");
         close(server_fd);
+        pthread_mutex_unlock(&server_fd_mutex);
         pthread_exit(NULL);
     }
 
+    pthread_mutex_unlock(&server_fd_mutex);
     printf("SatoriNOW listening for commands\n");
 
-    while (1) {
-        /** Accept new connections */
-        if ((client_fd = accept(server_fd, NULL, NULL)) == -1) {
+    while (!satnow_do_shutdown()) {
+
+        pthread_mutex_lock(&server_fd_mutex);
+
+        client_fd = accept(server_fd, NULL, NULL);
+        if (client_fd == -1) {
             perror("satorinow accept");
+            pthread_mutex_unlock(&server_fd_mutex);
             continue;
         }
 
-        /** Read the command */
-        memset(buffer, 0, BUFFER_SIZE);
-        rx = read(client_fd, buffer, BUFFER_SIZE);
+        pthread_mutex_unlock(&server_fd_mutex);
+
+        memset(buffer, 0, sizeof(buffer));
+        rx = read(client_fd, buffer, sizeof(buffer) - 1);
 
         if (rx > 0) {
+            buffer[rx] = '\0';
             printf("RX: [%s]\n", buffer);
             satnow_cli_execute(client_fd, buffer);
+        } else if (rx == -1) {
+            perror("satorinow read");
         }
 
         close(client_fd);
     }
 
+    close(server_fd);
+    unlink(SOCKET_PATH);
     pthread_exit(NULL);
 }
+
 
 /**
  * void satnow_cli_stop()
  * Stop the CLI
  */
 void satnow_cli_stop() {
+    struct satnow_cli_op *current = NULL;
+
+    pthread_mutex_lock(&server_fd_mutex);
     if (server_fd != -1) {
         close(server_fd);
+        server_fd = -1;
         unlink(SOCKET_PATH);
     }
+    pthread_mutex_unlock(&server_fd_mutex);
+
+    pthread_mutex_lock(&op_list_mutex);
+
+    current = op_list_head;
+    while (current) {
+        struct satnow_cli_op *next = current->next;
+
+        if (current->description) {
+            free((char *)current->description);
+        }
+        if (current->syntax) {
+            free((char *)current->syntax);
+        }
+        for (int i = 0; i < SATNOW_CLI_MAX_COMMAND_WORDS; i++) {
+            if (current->command[i]) {
+                free((char *)current->command[i]);
+            }
+        }
+        if (current->user_command) {
+            free((char *)current->user_command);
+        }
+
+        free(current);
+        current = next;
+    }
+
+    op_list_head = NULL;
+    pthread_mutex_unlock(&op_list_mutex);
 }
+
 
 /**
  * void satnow_cli_request_repository_password(int fd)
@@ -201,22 +293,20 @@ static int compare_commands(char *cmd1[], char *cmd2[]) {
         if (!cmd1[i] && !cmd2[i]) {
             return 0;
         }
-
         if (!cmd1[i]) {
             return -1;
         }
-
         if (!cmd2[i]) {
             return 1;
         }
-
-        int cmp = strcmp(cmd1[i], cmd2[i]);
+        int cmp = strcasecmp(cmd1[i], cmd2[i]);
         if (cmp != 0) {
             return cmp;
         }
     }
     return 0;
 }
+
 
 /**
  * int satnow_cli_register(struct satnow_cli_op)
@@ -240,14 +330,12 @@ int satnow_cli_register(struct satnow_cli_op *op) {
         perror("CLI operation missing handler");
         return -1;
     }
-
     new_op->handler = op->handler;
 
     for (int i = 0; i < SATNOW_CLI_MAX_COMMAND_WORDS; i++) {
-        if (!op->command[i]) {
-            break;
+        if (op->command[i]) {
+            new_op->command[i] = strdup(op->command[i]);
         }
-        new_op->command[i] = strdup(op->command[i]);
     }
 
     if (op->description) {
@@ -258,10 +346,12 @@ int satnow_cli_register(struct satnow_cli_op *op) {
         new_op->syntax = strdup(op->syntax);
     }
 
+    pthread_mutex_lock(&op_list_mutex);
     if (op_list_head == NULL || compare_commands(new_op->command, op_list_head->command) < 0) {
         new_op->next = op_list_head;
         op_list_head = new_op;
         op_list_size++;
+        pthread_mutex_unlock(&op_list_mutex);
         return 0;
     }
 
@@ -273,6 +363,7 @@ int satnow_cli_register(struct satnow_cli_op *op) {
     new_op->next = p->next;
     p->next = new_op;
     op_list_size++;
+    pthread_mutex_unlock(&op_list_mutex);
 
     printf("CLI Operation: %s\n", new_op->syntax);
     return 0;
@@ -283,15 +374,18 @@ int satnow_cli_register(struct satnow_cli_op *op) {
  * Print all the current CLI operations
  */
 void satnow_print_cli_operations() {
-    struct satnow_cli_op *current = op_list_head;
+    struct satnow_cli_op *current = NULL;
+
+    pthread_mutex_lock(&op_list_mutex);
+    current = op_list_head;
     while (current) {
         printf("Command: %s", current->command[0]);
         if (current->command[1]) printf(" %s", current->command[1]);
         if (current->command[2]) printf(" %s", current->command[2]);
-        printf(", Description: %s, Syntax: %s\n",
-               current->description, current->syntax);
+        printf(", Description: %s, Syntax: %s\n", current->description, current->syntax);
         current = current->next;
     }
+    pthread_mutex_unlock(&op_list_mutex);
 }
 
 /**
@@ -347,10 +441,16 @@ void satnow_cli_send_response(int client_fd, int op_code, const char *message) {
  * @param buffer
  */
 void satnow_cli_execute(int client_fd, const char *buffer) {
+    struct satnow_cli_op *current = NULL;
+    struct satnow_cli_op *best_match = NULL;
+    struct satnow_cli_args *args = NULL;
+
     char *buffer_copy = strdup(buffer);
     char *token = NULL;
     char *words[SATNOW_CLI_MAX_COMMAND_WORDS];
+
     int word_count = 0;
+    int best_match_score = 0;
 
     /**
      * Split buffer into words
@@ -364,9 +464,9 @@ void satnow_cli_execute(int client_fd, const char *buffer) {
     /**
      * Find the best match
      */
-    struct satnow_cli_op *current = op_list_head;
-    struct satnow_cli_op *best_match = NULL;
-    int best_match_score = 0;
+    pthread_mutex_lock(&op_list_mutex);
+    current = op_list_head;
+    best_match = NULL;
 
     while (current) {
         int match_score = 0;
@@ -394,17 +494,25 @@ void satnow_cli_execute(int client_fd, const char *buffer) {
         }
         printf("\n");
 
-        struct satnow_cli_args *args = calloc(1, sizeof(struct satnow_cli_args));
+        args = calloc(1, sizeof(struct satnow_cli_args));
         args->fd = client_fd;
         args->argc = word_count;
         args->argv = words;
         args->ref = best_match;
-
-        best_match->handler(args);
     } else {
         printf("Match not found\n");
     }
+    pthread_mutex_unlock(&op_list_mutex);
 
-    free(buffer_copy);
+    if (best_match) {
+        best_match->handler(args);
+        if (args) {
+            free(args);
+        }
+    }
+
+    if (buffer_copy) {
+        free(buffer_copy);
+    }
 }
 
