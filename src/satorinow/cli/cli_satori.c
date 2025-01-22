@@ -42,6 +42,7 @@ static char *cli_neuron_unlock(struct satnow_cli_args *request);
 static char *cli_neuron_parent_status(struct satnow_cli_args *request);
 static char *cli_neuron_system_metrics(struct satnow_cli_args *request);
 static char *cli_neuron_stats(struct satnow_cli_args *request);
+static char *cli_neuron_show_csrf(struct satnow_cli_args *request);
 
 static struct satnow_cli_op satori_cli_operations[] = {
     {
@@ -94,13 +95,13 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
     },
     {
-        { "neuron", "show", "details", NULL }
-        , "Generate an authenticated session on the specified neuron."
-        , "Usage: neuron show details"
+        { "neuron", "show", "csrf", NULL }
+        , "Generate a valid csrf token"
+        , "Usage: neuron show csrf"
         , 0
         , 0
         , 0
-        , cli_neuron_unlock
+        , cli_neuron_show_csrf
         , 0
     },
     {
@@ -815,6 +816,116 @@ static char *cli_neuron_stats(struct satnow_cli_args *request) {
             current = current->next;
         }
         satnow_repository_entry_list_free(list);
+    }
+    satnow_cli_send_response(request->fd, CLI_DONE, "\n");
+    return 0;
+}
+
+static char *cli_neuron_show_csrf(struct satnow_cli_args *request) {
+    struct repository_entry *list = NULL;
+    struct neuron_session *session = NULL;
+    char cli_buf[1024];
+    char *cookie = NULL;
+
+    if (!satnow_repository_password_valid()) {
+        satnow_cli_request_repository_password(request->fd);
+    }
+
+    for (int i = 0; i < request->argc; i++) {
+        printf("ARG[%d]: %s\n", i, request->argv[i]);
+    }
+
+    /** neuron show csrf ( <host:ip> | <nickname> ) */
+    if (request->argc < 4 || request->argc > 5) {
+        satnow_cli_send_response(request->fd, CLI_MORE, request->ref->syntax);
+        satnow_cli_send_response(request->fd, CLI_DONE, "\n");
+        return 0;
+    }
+
+    list = satnow_repository_entry_list();
+    if (list) {
+        struct repository_entry *current = list;
+        session = calloc(1, sizeof(*session));
+        session->buffer = NULL;
+        session->buffer_len = 0;
+
+        while (current) {
+#ifdef __DEBUG__
+            printf("Entry:\n");
+            printf("  Salt: ");
+            for (int i = 0; i < SALT_LEN; i++) printf("%02x", current->salt[i]);
+            printf("\n");
+            printf("  IV: ");
+            for (int i = 0; i < IV_LEN; i++) printf("%02x", current->iv[i]);
+            printf("\n");
+            printf("  Ciphertext length: %lu\n", current->ciphertext_len);
+#endif
+
+            if (current->plaintext) {
+                free(current->plaintext);
+            }
+            current->plaintext = malloc(current->ciphertext_len + 1);
+            if (!current->plaintext) {
+                printf("Out of memory\n");
+            }
+            else {
+                cJSON *json = NULL;
+
+                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
+                current->plaintext[current->plaintext_len] = '\0';
+
+                json = cJSON_Parse(current->plaintext);
+                if (!json) {
+                    fprintf(stderr, "Invalid JSON format.\n");
+                } else {
+                    const cJSON *json_host = cJSON_GetObjectItemCaseSensitive(json, "host");
+                    const cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
+                    const cJSON *json_nickname = cJSON_GetObjectItemCaseSensitive(json, "nickname");
+
+                    session->host = satnow_json_string_unescape(json_host->valuestring);
+                    session->pass = satnow_json_string_unescape(json_password->valuestring);
+                    session->nickname = satnow_json_string_unescape(json_nickname->valuestring);
+
+                    if (!strcasecmp(session->host, request->argv[3]) || !strcasecmp(session->nickname, request->argv[3])) {
+                        satnow_http_neuron_unlock(session);
+                        satnow_cli_send_response(request->fd, CLI_MORE, "Neuron Authenticated.\n");
+
+                        printf("satnow_http_neuron_vault(BEFORE) buffer len: %ld\n", session->buffer_len);
+                        satnow_http_neuron_vault(session);
+                        satnow_cli_send_response(request->fd, CLI_MORE, "Neuron csrf token to follow:\n\n");
+                        satnow_cli_send_response(request->fd, CLI_MORE, session->csrf_token);
+                    }
+
+                    if (session->host) {
+                        free(session->host);
+                        session->host = NULL;
+                    }
+                    if (session->pass) {
+                        free(session->pass);
+                        session->pass = NULL;
+                    }
+                    if (session->nickname) {
+                        free(session->nickname);
+                        session->nickname = NULL;
+                    }
+                    if (session->session) {
+                        free(session->session);
+                        session->session = NULL;
+                    }
+                    if (session->buffer) {
+                        free(session->buffer);
+                        session->buffer = NULL;
+                    }
+                    if (session->csrf_token) {
+                        free(session->csrf_token);
+                        session->csrf_token = NULL;
+                    }
+                }
+            }
+            current = current->next;
+        }
+        satnow_repository_entry_list_free(list);
+        free(session);
     }
     satnow_cli_send_response(request->fd, CLI_DONE, "\n");
     return 0;

@@ -29,6 +29,7 @@ struct neuron_session {
     char *pass;
     char *nickname;
     char *session;
+    char *csrf_token;
     char *buffer;
     size_t buffer_len;
 };
@@ -37,6 +38,7 @@ int satnow_http_neuron_unlock(struct neuron_session *session);
 int satnow_http_neuron_proxy_parent_status(struct neuron_session *session);
 int satnow_http_neuron_system_metrics(struct neuron_session *session);
 int satnow_http_neuron_stats(struct neuron_session *session);
+int satnow_http_neuron_vault(struct neuron_session *session);
 
 
 #endif //HTTP_NEURON_H
