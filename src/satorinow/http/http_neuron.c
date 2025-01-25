@@ -50,6 +50,7 @@ static void extract_csrf_token(struct neuron_session *data) {
 
                 if (data->csrf_token) {
                     free(data->csrf_token);
+                    data->csrf_token = NULL;
                 }
 
                 data->csrf_token = calloc(1, end - value_attr);
@@ -334,6 +335,99 @@ int satnow_http_neuron_vault(struct neuron_session *session) {
 
         result = curl_easy_perform(curl);
         extract_csrf_token(session);
+
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+    }
+
+    return 0;
+}
+
+int satnow_http_neuron_vault_transfer(struct neuron_session *session, char *amount_str, char *wallet) {
+    char url[URL_MAX];
+    char url_data[URL_DATA_MAX];
+    char post_data[1024];
+    char response_file[PATH_MAX];
+    CURL *curl;
+    CURLcode result;
+
+    time_t now = time(NULL);
+    if (now == -1) {
+        perror("Failed to get current time");
+        return 0;
+    }
+
+    snprintf(url, sizeof(url), "http://%s/send_satori_transaction_from_vault/main", session->host);
+    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
+    snprintf(post_data, sizeof(post_data), "address=%s&amount=%s&sweep=false&csrf_token=%s", wallet, amount_str, session->csrf_token);
+    printf("satnow_http_neuron_vault_transfer: %s, %s, %s\n", session->session, response_file, post_data);
+
+    curl = curl_easy_init();
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+
+        struct curl_slist *headers = NULL;
+        snprintf(url_data, sizeof(url_data), "Cookie: session=%s", session->session);
+        headers = curl_slist_append(headers, url_data);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)session);
+
+        result = curl_easy_perform(curl);
+        printf("DWAYNE: %s\n", session->buffer);
+
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+    }
+
+    return 0;
+}
+
+int satnow_http_neuron_decrypt_vault(struct neuron_session *session) {
+    char url[URL_MAX];
+    char url_data[URL_DATA_MAX];
+    char post_data[1024];
+    char response_file[PATH_MAX];
+    CURL *curl;
+    CURLcode result;
+
+    time_t now = time(NULL);
+    if (now == -1) {
+        perror("Failed to get current time");
+        return 0;
+    }
+
+    snprintf(url, sizeof(url), "http://%s/decrypt/vault", session->host);
+    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
+    snprintf(post_data, sizeof(post_data), "{\"password\":\"%s\"}", session->pass);
+    printf("satnow_http_neuron_decrypt_vault: %s, %s, %s\n", session->session, response_file, post_data);
+
+    curl = curl_easy_init();
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+
+        struct curl_slist *headers = NULL;
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+        snprintf(url_data, sizeof(url_data), "Cookie: session=%s", session->session);
+        headers = curl_slist_append(headers, url_data);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)session);
+
+        result = curl_easy_perform(curl);
+        printf("DWAYNE: %s\n", session->buffer);
 
         curl_slist_free_all(headers);
         curl_easy_cleanup(curl);

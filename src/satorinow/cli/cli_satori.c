@@ -37,12 +37,12 @@
 #pragma message ("SATORINOW DEBUG: CLI SATORI")
 #endif
 
-static char *cli_neuron_register(struct satnow_cli_args *request);
-static char *cli_neuron_unlock(struct satnow_cli_args *request);
 static char *cli_neuron_parent_status(struct satnow_cli_args *request);
+static char *cli_neuron_register(struct satnow_cli_args *request);
 static char *cli_neuron_system_metrics(struct satnow_cli_args *request);
 static char *cli_neuron_stats(struct satnow_cli_args *request);
-static char *cli_neuron_show_csrf(struct satnow_cli_args *request);
+static char *cli_neuron_unlock(struct satnow_cli_args *request);
+static char *cli_neuron_vault_transfer(struct satnow_cli_args *request);
 
 static struct satnow_cli_op satori_cli_operations[] = {
     {
@@ -95,13 +95,13 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
     },
     {
-        { "neuron", "show", "csrf", NULL }
-        , "Generate a valid csrf token"
-        , "Usage: neuron show csrf"
+        { "neuron", "vault", "transfer", NULL }
+        , "Transfer the specified amount of satori from the vault to the specified wallet address"
+        , "Usage: neuron vault transfer <amount> satori <wallet-address> ( <host:ip> | <nickname> )"
         , 0
         , 0
         , 0
-        , cli_neuron_show_csrf
+        , cli_neuron_vault_transfer
         , 0
     },
     {
@@ -821,11 +821,9 @@ static char *cli_neuron_stats(struct satnow_cli_args *request) {
     return 0;
 }
 
-static char *cli_neuron_show_csrf(struct satnow_cli_args *request) {
+static char *cli_neuron_vault_transfer(struct satnow_cli_args *request) {
     struct repository_entry *list = NULL;
     struct neuron_session *session = NULL;
-    char cli_buf[1024];
-    char *cookie = NULL;
 
     if (!satnow_repository_password_valid()) {
         satnow_cli_request_repository_password(request->fd);
@@ -835,8 +833,8 @@ static char *cli_neuron_show_csrf(struct satnow_cli_args *request) {
         printf("ARG[%d]: %s\n", i, request->argv[i]);
     }
 
-    /** neuron show csrf ( <host:ip> | <nickname> ) */
-    if (request->argc < 4 || request->argc > 5) {
+    /** neuron vault transfer <amount> satori <wallet-address> ( <host:ip> | <nickname> ) */
+    if (request->argc != 7) {
         satnow_cli_send_response(request->fd, CLI_MORE, request->ref->syntax);
         satnow_cli_send_response(request->fd, CLI_DONE, "\n");
         return 0;
@@ -886,13 +884,18 @@ static char *cli_neuron_show_csrf(struct satnow_cli_args *request) {
                     session->pass = satnow_json_string_unescape(json_password->valuestring);
                     session->nickname = satnow_json_string_unescape(json_nickname->valuestring);
 
-                    if (!strcasecmp(session->host, request->argv[3]) || !strcasecmp(session->nickname, request->argv[3])) {
+                    if (!strcasecmp(session->host, request->argv[6]) || !strcasecmp(session->nickname, request->argv[6])) {
+                        satnow_cli_send_response(request->fd, CLI_MORE, "Neuron located. Connecting...\n");
                         satnow_http_neuron_unlock(session);
-                        satnow_cli_send_response(request->fd, CLI_MORE, "Neuron Authenticated.\n");
-
-                        printf("satnow_http_neuron_vault(BEFORE) buffer len: %ld\n", session->buffer_len);
                         satnow_http_neuron_vault(session);
-                        satnow_cli_send_response(request->fd, CLI_MORE, "Neuron csrf token to follow:\n\n");
+                        satnow_http_neuron_decrypt_vault(session);
+                        satnow_cli_send_response(request->fd, CLI_INPUT_ECHO_OFF, "Proceed [Y/N]:");
+                        printf("sleep");
+                        sleep(5);
+                        printf("sleep done");
+
+                        satnow_cli_send_response(request->fd, CLI_MORE, "Transferring satori\n");
+                        satnow_http_neuron_vault_transfer(session, request->argv[3] /* amount */, request->argv[5] /* destination address */);
                         satnow_cli_send_response(request->fd, CLI_MORE, session->csrf_token);
                     }
 
