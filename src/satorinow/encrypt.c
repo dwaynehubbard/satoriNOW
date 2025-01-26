@@ -121,23 +121,26 @@ void satnow_encrypt_ciphertext(const unsigned char *plaintext
  * @param plaintext
  * @param plaintext_len
  */
-void satnow_encrypt_ciphertext2text(const unsigned char *ciphertext, int ciphertext_len,
+int satnow_encrypt_ciphertext2text(const unsigned char *ciphertext, int ciphertext_len,
                                     const unsigned char *key, const unsigned char *iv,
                                     unsigned char *plaintext, int *plaintext_len) {
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) handleErrors("EVP_CIPHER_CTX_new");
 
-    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv) != 1)
+    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv) != 1) {
         handleErrors("EVP_DecryptInit_ex");
+    }
 
     int len;
-    if (EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len) != 1)
+    if (EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len) != 1) {
         handleErrors("EVP_DecryptUpdate");
+    }
     *plaintext_len = len;
 
     printf("EVP_DecryptFinal_ex(ctx, len: %d), plaintext_len: %d\n", len, *plaintext_len);
-    if (EVP_DecryptFinal_ex(ctx, plaintext + len, &len) != 1)
-        handleErrors("EVP_DecryptFinal_ex");
+    if (EVP_DecryptFinal_ex(ctx, plaintext + len, &len) != 1) {
+        return -1;
+    }
     *plaintext_len += len;
 
     EVP_CIPHER_CTX_free(ctx);

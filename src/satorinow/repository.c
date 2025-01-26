@@ -46,6 +46,7 @@ static time_t repository_password_expire;
 
 static char *cli_repository_backup(struct satnow_cli_args *request);
 static char *cli_repository_password_change(struct satnow_cli_args *request);
+static int repository_password_forget();
 static char *cli_repository_show(struct satnow_cli_args *request);
 
 static struct repository_entry_content* parse_repository_entry(const char *content);
@@ -144,6 +145,11 @@ int satnow_repository_password_valid() {
         return FALSE;
     }
     return TRUE;
+}
+
+static int repository_password_forget() {
+    memset(repository_password, 0, sizeof(repository_password));
+    repository_password_expire = 0;
 }
 
 /**
@@ -283,6 +289,11 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
                 satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
                 current->plaintext[current->plaintext_len] = '\0';
 
+                if (!strcasecmp(current->plaintext, REPOSITORY_MARKER)) {
+                    current = current->next;
+                    continue;
+                }
+
                 json = cJSON_Parse(current->plaintext);
                 if (!json) {
                     fprintf(stderr, "Invalid JSON format.\n");
@@ -317,6 +328,41 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
     return 0;
 }
 
+static void write_repository_entry(FILE *repo, struct repository_entry *entry, const char *buffer, int length) {
+#if __DEBUG__
+    printf("Opened repository\n");
+#endif
+    if (!RAND_bytes(entry->salt, SALT_LEN)) {
+        perror("Error generating salt");
+        return;
+    }
+#if __DEBUG__
+    printf("Deriving keys\n");
+#endif
+    satnow_encrypt_derive_mast_key(repository_password, entry->salt, entry->master_key);
+    satnow_encrypt_derive_file_key(entry->master_key, CONFIG_DAT, entry->file_key);
+
+    if (!RAND_bytes(entry->iv, IV_LEN)) {
+        perror("Error generating iv");
+        return;
+    }
+#if __DEBUG__
+    printf("Writing salt, iv to repository\n");
+#endif
+    fwrite(entry->salt, 1, SALT_LEN, repo);
+    fwrite(entry->iv, 1, IV_LEN, repo);
+#if __DEBUG__
+    printf("Writing ciphertext to repository\n");
+#endif
+    entry->ciphertext = calloc(sizeof(unsigned char), length + EVP_MAX_BLOCK_LENGTH);
+    satnow_encrypt_ciphertext((unsigned char *)buffer, length, entry->file_key, entry->iv, entry->ciphertext, &entry->ciphertext_len);
+    fwrite(&entry->ciphertext_len, sizeof(unsigned long), 1, repo);
+    fwrite(entry->ciphertext, 1, entry->ciphertext_len, repo);
+#if __DEBUG__
+    printf("Done appending to repository\n");
+#endif
+}
+
 /**
  * void satnow_repository_entry_append(const char *buffer, int length)
  * Append the supplied buffer to the end of the repository
@@ -338,44 +384,16 @@ void satnow_repository_entry_append(const char *buffer, int length) {
         pthread_mutex_unlock(&repository_mutex);
         return;
     }
-#if __DEBUG__
-    printf("Opened repository\n");
-#endif
-    if (!RAND_bytes(entry->salt, SALT_LEN)) {
-        perror("Error generating salt");
-        free(entry);
-        fclose(repo);
-        pthread_mutex_unlock(&repository_mutex);
-        return;
-    }
-#if __DEBUG__
-    printf("Deriving keys\n");
-#endif
-    satnow_encrypt_derive_mast_key(repository_password, entry->salt, entry->master_key);
-    satnow_encrypt_derive_file_key(entry->master_key, CONFIG_DAT, entry->file_key);
 
-    if (!RAND_bytes(entry->iv, IV_LEN)) {
-        perror("Error generating iv");
-        free(entry);
-        fclose(repo);
-        pthread_mutex_unlock(&repository_mutex);
-        return;
+    if (ftell(repo) == 0) {
+        /** EMPTY REPO */
+        struct repository_entry *head = calloc(1, sizeof(struct repository_entry));
+        write_repository_entry(repo, head, REPOSITORY_MARKER, REPOSITORY_MARKER_LEN);
+        free(head);
     }
-#if __DEBUG__
-    printf("Writing salt, iv to repository\n");
-#endif
-    fwrite(entry->salt, 1, SALT_LEN, repo);
-    fwrite(entry->iv, 1, IV_LEN, repo);
-#if __DEBUG__
-    printf("Writing ciphertext to repository\n");
-#endif
-    entry->ciphertext = calloc(sizeof(unsigned char), length + EVP_MAX_BLOCK_LENGTH);
-    satnow_encrypt_ciphertext((unsigned char *)buffer, length, entry->file_key, entry->iv, entry->ciphertext, &entry->ciphertext_len);
-    fwrite(&entry->ciphertext_len, sizeof(unsigned long), 1, repo);
-    fwrite(entry->ciphertext, 1, entry->ciphertext_len, repo);
-#if __DEBUG__
-    printf("Done appending to repository\n");
-#endif
+
+    write_repository_entry(repo, entry, buffer, length);
+
     free(entry->ciphertext);
     free(entry);
     fclose(repo);
@@ -417,7 +435,7 @@ struct repository_entry *satnow_repository_entry_list() {
 
     FILE *repo = fopen(repository_dat, "rb");
     if (!repo) {
-        perror("Error opening repository file");
+        perror("Error opening/unlocking repository file");
         pthread_mutex_unlock(&repository_mutex);
         return NULL;
     }
@@ -500,6 +518,35 @@ struct repository_entry *satnow_repository_entry_list() {
         satnow_encrypt_derive_file_key(entry->master_key, CONFIG_DAT, entry->file_key);
 
         if (!head) {
+            /** MAKE SURE ENTRY CONTAINS EXPECTED CONTENTS */
+            if (entry->plaintext) {
+                free(entry->plaintext);
+                entry->plaintext = NULL;
+                entry->plaintext_len = 0;
+            }
+            entry->plaintext = malloc(entry->plaintext_len + 1);
+
+            if (satnow_encrypt_ciphertext2text(entry->ciphertext
+                    , (int)entry->ciphertext_len
+                    , entry->file_key
+                    , entry->iv
+                    , entry->plaintext
+                    , &entry->plaintext_len) == -1) {
+
+                perror("Error opening/unlocking repository file");
+                repository_password_forget();
+                satnow_repository_entry_list_free(entry);
+                fclose(repo);
+                pthread_mutex_unlock(&repository_mutex);
+                return NULL;
+            }
+            if (strcasecmp(entry->plaintext, REPOSITORY_MARKER)) {
+                perror("Error opening/unlocking repository file");
+                satnow_repository_entry_list_free(entry);
+                fclose(repo);
+                pthread_mutex_unlock(&repository_mutex);
+                return NULL;
+            }
             head = entry;
         } else if (tail) {
             tail->next = entry;

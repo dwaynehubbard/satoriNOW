@@ -26,6 +26,8 @@
 
 #define REPOSITORY_PASSWORD_TIMEOUT (15 * 60)
 #define REPOSITORY_DELIMITER "|"
+#define REPOSITORY_MARKER "0xDEADBEEF"
+#define REPOSITORY_MARKER_LEN (sizeof(REPOSITORY_MARKER) - 1)
 
 void satnow_repository_init(const char *config_dir);
 void satnow_repository_shutdown();

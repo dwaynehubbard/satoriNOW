@@ -40,7 +40,7 @@ void satnow_encrypt_ciphertext(const unsigned char *plaintext
     , unsigned char *ciphertext
     , int *ciphertext_len);
 
-void satnow_encrypt_ciphertext2text(const unsigned char *ciphertext, int ciphertext_len,
+int satnow_encrypt_ciphertext2text(const unsigned char *ciphertext, int ciphertext_len,
              const unsigned char *key, const unsigned char *iv,
              unsigned char *plaintext, int *plaintext_len);
 
