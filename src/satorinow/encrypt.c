@@ -139,6 +139,8 @@ int satnow_encrypt_ciphertext2text(const unsigned char *ciphertext, int cipherte
 
     printf("EVP_DecryptFinal_ex(ctx, len: %d), plaintext_len: %d\n", len, *plaintext_len);
     if (EVP_DecryptFinal_ex(ctx, plaintext + len, &len) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        *plaintext_len = 0;
         return -1;
     }
     *plaintext_len += len;

@@ -304,17 +304,34 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
                     const cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
                     const cJSON *json_nickname = cJSON_GetObjectItemCaseSensitive(json, "nickname");
 
-                    char *host = satnow_json_string_unescape(json_host->valuestring);
-                    char *pass = satnow_json_string_unescape(json_password->valuestring);
-                    char *nickname = satnow_json_string_unescape(json_nickname->valuestring);
+                    char *host = json_host && json_host->valuestring
+                        ? satnow_json_string_unescape(json_host->valuestring)
+                        : NULL;
+
+                    char *pass = json_password && json_password->valuestring
+                        ? satnow_json_string_unescape(json_password->valuestring)
+                        : NULL;
+
+                    char *nickname = json_nickname && json_nickname->valuestring
+                        ? satnow_json_string_unescape(json_nickname->valuestring)
+                        : NULL;
 
                     char *maskedpass = calloc(1, strlen(pass) + 1);
                     for (int i = 0; i < strlen(pass); i++) {
                         maskedpass[i] = '*';
                     }
 
-                    snprintf(cli_buf, sizeof(cli_buf), "\t%s\t%s\t%s\n", host, nickname, maskedpass);
+                    snprintf(cli_buf, sizeof(cli_buf), "\t%s\t%s\t%s\n"
+                        , host
+                        , nickname ? nickname : ""
+                        , maskedpass ? maskedpass : "");
+
                     satnow_cli_send_response(request->fd, CLI_MORE, (const char *)cli_buf);
+
+                    if (maskedpass) {
+                        free(maskedpass);
+                        maskedpass = NULL;
+                    }
 
                     if (json) {
                         cJSON_Delete(json);
@@ -334,11 +351,6 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
                     if (nickname) {
                         free(nickname);
                         nickname = NULL;
-                    }
-
-                    if (maskedpass) {
-                        free(maskedpass);
-                        maskedpass = NULL;
                     }
                 }
             }
