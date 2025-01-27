@@ -146,4 +146,5 @@ int satnow_encrypt_ciphertext2text(const unsigned char *ciphertext, int cipherte
     *plaintext_len += len;
 
     EVP_CIPHER_CTX_free(ctx);
+    return 0;
 }

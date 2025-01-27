@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+#include <cjson/cJSON.h>
 #include <satorinow.h>
 #include "satorinow/repository.h"
 #include "satorinow/cli.h"
@@ -144,6 +145,7 @@ int satnow_repository_password_valid() {
 static int repository_password_forget() {
     memset(repository_password, 0, sizeof(repository_password));
     repository_password_expire = 0;
+    return 0;
 }
 
 /**
@@ -166,7 +168,7 @@ int satnow_repository_exists() {
  */
 static char *cli_repository_backup(struct satnow_cli_args *request) {
     char filename[PATH_MAX];
-    char tbuf[1024];
+    char tbuf[PATH_MAX + 128];
     struct repository_entry *list = NULL;
 
     if (!satnow_repository_password_valid()) {
@@ -238,6 +240,14 @@ static char *cli_repository_backup(struct satnow_cli_args *request) {
 static char *cli_repository_password_change(struct satnow_cli_args *request) {
     struct repository_entry *list = NULL;
 
+    /** STUB, need to rewrite the repository using newly encrypted ciphertext and the new master key */
+
+    if (list && request) {
+        printf("STUB\n");
+    } else {
+        printf("STUB\n");
+    }
+
     return 0;
 }
 
@@ -285,15 +295,15 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
             else {
                 cJSON *json = NULL;
 
-                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
+                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, (int *)&current->plaintext_len);
                 current->plaintext[current->plaintext_len] = '\0';
 
-                if (!strcasecmp(current->plaintext, REPOSITORY_MARKER)) {
+                if (!strcasecmp((char *)current->plaintext, REPOSITORY_MARKER)) {
                     current = current->next;
                     continue;
                 }
 
-                json = cJSON_Parse(current->plaintext);
+                json = cJSON_Parse((char *)current->plaintext);
                 if (!json) {
                     fprintf(stderr, "Invalid JSON format.\n");
                 } else {
@@ -313,21 +323,21 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
                         ? satnow_json_string_unescape(json_nickname->valuestring)
                         : NULL;
 
-                    char *maskedpass = calloc(1, strlen(pass) + 1);
-                    for (int i = 0; i < strlen(pass); i++) {
-                        maskedpass[i] = '*';
+                    char *maskpass = calloc(1, strlen(pass) + 1);
+                    for (int i = 0; i < (int)strlen(pass); i++) {
+                        maskpass[i] = '*';
                     }
 
                     snprintf(cli_buf, sizeof(cli_buf), "\t%s\t%s\t%s\n"
                         , host
                         , nickname ? nickname : ""
-                        , maskedpass ? maskedpass : "");
+                        , maskpass ? maskpass : "");
 
                     satnow_cli_send_response(request->fd, CLI_MORE, (const char *)cli_buf);
 
-                    if (maskedpass) {
-                        free(maskedpass);
-                        maskedpass = NULL;
+                    if (maskpass) {
+                        free(maskpass);
+                        maskpass = NULL;
                     }
 
                     if (json) {
@@ -388,7 +398,7 @@ static void write_repository_entry(FILE *repo, struct repository_entry *entry, c
     printf("Writing ciphertext to repository\n");
 #endif
     entry->ciphertext = calloc(sizeof(unsigned char), length + EVP_MAX_BLOCK_LENGTH);
-    satnow_encrypt_ciphertext((unsigned char *)buffer, length, entry->file_key, entry->iv, entry->ciphertext, &entry->ciphertext_len);
+    satnow_encrypt_ciphertext((unsigned char *)buffer, length, entry->file_key, entry->iv, entry->ciphertext, (int *)&entry->ciphertext_len);
     fwrite(&entry->ciphertext_len, sizeof(unsigned long), 1, repo);
     fwrite(entry->ciphertext, 1, entry->ciphertext_len, repo);
 #if __DEBUG__
@@ -478,7 +488,6 @@ void satnow_repository_entry_list_free(struct repository_entry *list) {
  * @return
  */
 struct repository_entry *satnow_repository_entry_list() {
-    struct repository_entry *once = NULL;
     struct repository_entry *head = NULL;
     struct repository_entry *tail = NULL;
 
@@ -592,7 +601,7 @@ struct repository_entry *satnow_repository_entry_list() {
                     , entry->file_key
                     , entry->iv
                     , entry->plaintext
-                    , &entry->plaintext_len) == -1) {
+                    , (int *)&entry->plaintext_len) == -1) {
 
                 perror("Error opening/unlocking repository file");
                 repository_password_forget();
@@ -601,7 +610,7 @@ struct repository_entry *satnow_repository_entry_list() {
                 pthread_mutex_unlock(&repository_mutex);
                 return NULL;
             }
-            if (strcasecmp(entry->plaintext, REPOSITORY_MARKER)) {
+            if (strcasecmp((char *)entry->plaintext, REPOSITORY_MARKER) != 0) {
                 perror("Error opening/unlocking repository file");
                 satnow_repository_entry_list_free(entry);
                 fclose(repo);

@@ -287,7 +287,7 @@ void satnow_cli_request_repository_password(int fd) {
  * @param cmd2
  * @return
  */
-static int compare_commands(char *cmd1[], char *cmd2[]) {
+static int compare_commands(const char *cmd1[], const char *cmd2[]) {
     for (int i = 0; i < SATNOW_CLI_MAX_COMMAND_WORDS; i++) {
 
         if (!cmd1[i] && !cmd2[i]) {

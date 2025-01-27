@@ -23,11 +23,6 @@
 #ifndef JSON_H
 #define JSON_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <cjson/cJSON.h>
-
 char *satnow_json_string_escape(const char *input);
 char *satnow_json_string_unescape(const char *input);
 

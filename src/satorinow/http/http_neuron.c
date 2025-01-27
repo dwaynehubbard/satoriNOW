@@ -26,6 +26,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <curl/curl.h>
+#include <cjson/cJSON.h>
 #include <satorinow.h>
 #include "satorinow/http/http_neuron.h"
 #include "satorinow/cli.h"
@@ -97,7 +98,6 @@ int satnow_http_neuron_unlock(struct neuron_session *session) {
     char url_data[URL_DATA_MAX];
     char cookie_file[PATH_MAX];
     char response_file[PATH_MAX];
-    char *the_cookie = NULL;
     CURL *curl;
     CURLcode result;
 
@@ -125,9 +125,11 @@ int satnow_http_neuron_unlock(struct neuron_session *session) {
         curl_easy_setopt(curl, CURLOPT_COOKIEJAR, cookie_file);
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
-        result = curl_easy_perform(curl);
-        if (result != CURLE_OK) {
-            fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(result));
+        if ((result = curl_easy_perform(curl)) != CURLE_OK) {
+            printf("satnow_http_neuron_unlock() failed: %s\n", curl_easy_strerror(result));
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            return -1;
         }
 
         curl_slist_free_all(headers);
@@ -140,7 +142,15 @@ int satnow_http_neuron_unlock(struct neuron_session *session) {
 
             do {
                 memset(tbuf, 0, sizeof(tbuf));
-                fgets(tbuf, 1023, cookie);
+
+                if (fgets(tbuf, 1023, cookie) == NULL) {
+                    printf("failed to read cookie file\n");
+                    fclose(cookie);
+                    if (remove(cookie_file)) {
+                        perror("Error deleting cookie file");
+                    }
+                }
+
                 if (strlen(tbuf)) {
                     char *s = strstr(tbuf, "session");
                     if (s) {
@@ -203,9 +213,14 @@ int satnow_http_neuron_proxy_parent_status(struct neuron_session *session) {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)session);
 
-        result = curl_easy_perform(curl);
-        extract_csrf_token(session);
+        if ((result = curl_easy_perform(curl)) != CURLE_OK) {
+            printf("satnow_http_neuron_proxy_parent_status() failed: %s\n", curl_easy_strerror(result));
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            return -1;
+        }
 
+        extract_csrf_token(session);
         curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
     }
@@ -249,7 +264,13 @@ int satnow_http_neuron_system_metrics(struct neuron_session *session) {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)session);
 
-        result = curl_easy_perform(curl);
+        if ((result = curl_easy_perform(curl)) != CURLE_OK) {
+            printf("satnow_http_neuron_system_metrics() failed: %s\n", curl_easy_strerror(result));
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            return -1;
+        }
+
         extract_csrf_token(session);
 
         curl_slist_free_all(headers);
@@ -291,9 +312,14 @@ int satnow_http_neuron_stats(struct neuron_session *session) {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)session);
 
-        result = curl_easy_perform(curl);
-        extract_csrf_token(session);
+        if ((result = curl_easy_perform(curl)) != CURLE_OK) {
+            printf("satnow_http_neuron_stats() failed: %s\n", curl_easy_strerror(result));
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            return -1;
+        }
 
+        extract_csrf_token(session);
         curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
     }
@@ -333,9 +359,14 @@ int satnow_http_neuron_vault(struct neuron_session *session) {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)session);
 
-        result = curl_easy_perform(curl);
-        extract_csrf_token(session);
+        if ((result = curl_easy_perform(curl)) != CURLE_OK) {
+            printf("satnow_http_neuron_vault() failed: %s\n", curl_easy_strerror(result));
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            return -1;
+        }
 
+        extract_csrf_token(session);
         curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
     }
@@ -378,8 +409,12 @@ int satnow_http_neuron_vault_transfer(struct neuron_session *session, char *amou
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)session);
 
-        result = curl_easy_perform(curl);
-        printf("DWAYNE: %s\n", session->buffer);
+        if ((result = curl_easy_perform(curl)) != CURLE_OK) {
+            printf("satnow_http_neuron_vault_transfer() failed: %s\n", curl_easy_strerror(result));
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            return -1;
+        }
 
         curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
@@ -426,8 +461,12 @@ int satnow_http_neuron_decrypt_vault(struct neuron_session *session) {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)session);
 
-        result = curl_easy_perform(curl);
-        printf("DWAYNE: %s\n", session->buffer);
+        if ((result = curl_easy_perform(curl)) != CURLE_OK) {
+            printf("satnow_http_neuron_decrypt_vault() failed: %s\n", curl_easy_strerror(result));
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            return -1;
+        }
 
         curl_slist_free_all(headers);
         curl_easy_cleanup(curl);

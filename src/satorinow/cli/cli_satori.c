@@ -26,6 +26,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <curl/curl.h>
+#include <cjson/cJSON.h>
 #include <satorinow.h>
 #include "satorinow/cli.h"
 #include "satorinow/cli/cli_satori.h"
@@ -256,8 +257,6 @@ static char *cli_neuron_register(struct satnow_cli_args *request) {
 static char *cli_neuron_unlock(struct satnow_cli_args *request) {
     struct repository_entry *list = NULL;
     struct neuron_session *session = NULL;
-    char cli_buf[1024];
-    char *cookie = NULL;
 
     if (!satnow_repository_password_valid()) {
         satnow_cli_request_repository_password(request->fd);
@@ -301,10 +300,10 @@ static char *cli_neuron_unlock(struct satnow_cli_args *request) {
             else {
                 cJSON *json = NULL;
 
-                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
+                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, (int *)&current->plaintext_len);
                 current->plaintext[current->plaintext_len] = '\0';
 
-                json = cJSON_Parse(current->plaintext);
+                json = cJSON_Parse((char *)current->plaintext);
                 if (!json) {
                     fprintf(stderr, "Invalid JSON format.\n");
                 } else {
@@ -317,12 +316,7 @@ static char *cli_neuron_unlock(struct satnow_cli_args *request) {
                     session->nickname = satnow_json_string_unescape(json_nickname->valuestring);
 
                     if (!strcasecmp(session->host, request->argv[2]) || !strcasecmp(session->nickname, request->argv[2])) {
-                        char cookie_buffer[BUFFER_SIZE];
                         satnow_http_neuron_unlock(session);
-                        snprintf(cookie_buffer, BUFFER_SIZE, "%s\n", cookie);
-                        satnow_cli_send_response(request->fd, CLI_MORE, "Neuron Unlocked. Session cookie to follow:\n");
-                        satnow_cli_send_response(request->fd, CLI_MORE, cookie_buffer);
-                        free(cookie);
                     }
 
                     free(session->host);
@@ -342,8 +336,6 @@ static char *cli_neuron_unlock(struct satnow_cli_args *request) {
 static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
     struct repository_entry *list = NULL;
     struct neuron_session *session = NULL;
-    char cli_buf[1024];
-    char *cookie = NULL;
 
     if (!satnow_repository_password_valid()) {
         satnow_cli_request_repository_password(request->fd);
@@ -389,10 +381,10 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
             else {
                 cJSON *json = NULL;
 
-                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
+                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, (int *)&current->plaintext_len);
                 current->plaintext[current->plaintext_len] = '\0';
 
-                json = cJSON_Parse(current->plaintext);
+                json = cJSON_Parse((char *)current->plaintext);
                 if (!json) {
                     fprintf(stderr, "Invalid JSON format.\n");
                 } else {
@@ -515,8 +507,6 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
 static char *cli_neuron_system_metrics(struct satnow_cli_args *request) {
     struct repository_entry *list = NULL;
     struct neuron_session *session = NULL;
-    char cli_buf[1024];
-    char *cookie = NULL;
 
     if (!satnow_repository_password_valid()) {
         satnow_cli_request_repository_password(request->fd);
@@ -562,10 +552,10 @@ static char *cli_neuron_system_metrics(struct satnow_cli_args *request) {
             else {
                 cJSON *json = NULL;
 
-                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
+                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, (int *)&current->plaintext_len);
                 current->plaintext[current->plaintext_len] = '\0';
 
-                json = cJSON_Parse(current->plaintext);
+                json = cJSON_Parse((char *)current->plaintext);
                 if (!json) {
                     fprintf(stderr, "Invalid JSON format.\n");
                 } else {
@@ -730,8 +720,6 @@ static char *cli_neuron_system_metrics(struct satnow_cli_args *request) {
 static char *cli_neuron_stats(struct satnow_cli_args *request) {
     struct repository_entry *list = NULL;
     struct neuron_session *session = NULL;
-    char cli_buf[1024];
-    char *cookie = NULL;
 
     if (!satnow_repository_password_valid()) {
         satnow_cli_request_repository_password(request->fd);
@@ -778,10 +766,10 @@ static char *cli_neuron_stats(struct satnow_cli_args *request) {
             else {
                 cJSON *json = NULL;
 
-                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
+                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, (int *)&current->plaintext_len);
                 current->plaintext[current->plaintext_len] = '\0';
 
-                json = cJSON_Parse(current->plaintext);
+                json = cJSON_Parse((char *)current->plaintext);
                 if (!json) {
                     fprintf(stderr, "Invalid JSON format.\n");
                 } else {
@@ -882,10 +870,10 @@ static char *cli_neuron_vault_transfer(struct satnow_cli_args *request) {
             else {
                 cJSON *json = NULL;
 
-                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, &current->plaintext_len);
+                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, (int *)&current->plaintext_len);
                 current->plaintext[current->plaintext_len] = '\0';
 
-                json = cJSON_Parse(current->plaintext);
+                json = cJSON_Parse((char *)current->plaintext);
                 if (!json) {
                     fprintf(stderr, "Invalid JSON format.\n");
                 } else {
