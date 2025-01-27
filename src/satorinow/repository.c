@@ -210,8 +210,9 @@ static char *cli_repository_backup(struct satnow_cli_args *request) {
         while (current) {
             if (current->plaintext) {
                 free(current->plaintext);
+                current->plaintext = NULL;
             }
-            current->plaintext = malloc(current->ciphertext_len + 1);
+            current->plaintext = calloc(sizeof(unsigned char), current->ciphertext_len + EVP_MAX_BLOCK_LENGTH);
             if (!current->plaintext) {
                 printf("Out of memory\n");
             }
@@ -278,8 +279,9 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
 
             if (current->plaintext) {
                 free(current->plaintext);
+                current->plaintext = NULL;
             }
-            current->plaintext = malloc(current->ciphertext_len + 1);
+            current->plaintext = calloc(sizeof(unsigned char), current->ciphertext_len + EVP_MAX_BLOCK_LENGTH);
             if (!current->plaintext) {
                 printf("Out of memory\n");
             }
@@ -314,10 +316,30 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
                     snprintf(cli_buf, sizeof(cli_buf), "\t%s\t%s\t%s\n", host, nickname, maskedpass);
                     satnow_cli_send_response(request->fd, CLI_MORE, (const char *)cli_buf);
 
-                    free(host);
-                    free(pass);
-                    free(nickname);
-                    free(maskedpass);
+                    if (json) {
+                        cJSON_Delete(json);
+                        json = NULL;
+                    }
+
+                    if (host) {
+                        free(host);
+                        host = NULL;
+                    }
+
+                    if (pass) {
+                        free(pass);
+                        pass = NULL;
+                    }
+
+                    if (nickname) {
+                        free(nickname);
+                        nickname = NULL;
+                    }
+
+                    if (maskedpass) {
+                        free(maskedpass);
+                        maskedpass = NULL;
+                    }
                 }
             }
             current = current->next;
@@ -381,6 +403,7 @@ void satnow_repository_entry_append(const char *buffer, int length) {
     if (!repo) {
         perror("Fatal repository error");
         free(entry);
+        entry = NULL;
         pthread_mutex_unlock(&repository_mutex);
         return;
     }
@@ -390,12 +413,21 @@ void satnow_repository_entry_append(const char *buffer, int length) {
         struct repository_entry *head = calloc(1, sizeof(struct repository_entry));
         write_repository_entry(repo, head, REPOSITORY_MARKER, REPOSITORY_MARKER_LEN);
         free(head);
+        head = NULL;
     }
 
     write_repository_entry(repo, entry, buffer, length);
 
-    free(entry->ciphertext);
-    free(entry);
+    if (entry->ciphertext) {
+        free(entry->ciphertext);
+        entry->ciphertext = NULL;
+    }
+
+    if (entry) {
+        free(entry);
+        entry = NULL;
+    }
+
     fclose(repo);
     pthread_mutex_unlock(&repository_mutex);
 }
@@ -412,10 +444,13 @@ void satnow_repository_entry_list_free(struct repository_entry *list) {
             struct repository_entry *next = current->next;
             if (current->ciphertext) {
                 free(current->ciphertext);
+                current->ciphertext = NULL;
             }
             if (current->plaintext) {
                 free(current->plaintext);
+                current->plaintext = NULL;
             }
+
             free(current);
             current = next;
         }
@@ -457,11 +492,13 @@ struct repository_entry *satnow_repository_entry_list() {
             if (feof(repo)) {
                 /** End of File */
                 free(entry);
+                entry = NULL;
                 break;
             }
             perror("Error reading repository salt");
             satnow_repository_entry_list_free(head);
             free(entry);
+            entry = NULL;
             fclose(repo);
             pthread_mutex_unlock(&repository_mutex);
             return NULL;
@@ -471,6 +508,7 @@ struct repository_entry *satnow_repository_entry_list() {
             perror("Error reading repository IV");
             satnow_repository_entry_list_free(head);
             free(entry);
+            entry = NULL;
             fclose(repo);
             pthread_mutex_unlock(&repository_mutex);
             return NULL;
@@ -480,6 +518,7 @@ struct repository_entry *satnow_repository_entry_list() {
             perror("Error reading ciphertext length");
             satnow_repository_entry_list_free(head);
             free(entry);
+            entry = NULL;
             fclose(repo);
             pthread_mutex_unlock(&repository_mutex);
             return NULL;
@@ -489,16 +528,18 @@ struct repository_entry *satnow_repository_entry_list() {
             perror("Invalid ciphertext length");
             satnow_repository_entry_list_free(head);
             free(entry);
+            entry = NULL;
             fclose(repo);
             pthread_mutex_unlock(&repository_mutex);
             return NULL;
         }
 
-        entry->ciphertext = malloc(entry->ciphertext_len);
+        entry->ciphertext = calloc(sizeof(unsigned char), entry->ciphertext_len + EVP_MAX_BLOCK_LENGTH);
         if (!entry->ciphertext) {
             perror("Failed to allocate memory for ciphertext");
             satnow_repository_entry_list_free(head);
             free(entry);
+            entry = NULL;
             fclose(repo);
             pthread_mutex_unlock(&repository_mutex);
             return NULL;
@@ -507,8 +548,12 @@ struct repository_entry *satnow_repository_entry_list() {
         if (fread(entry->ciphertext, 1, entry->ciphertext_len, repo) != entry->ciphertext_len) {
             perror("Error reading ciphertext");
             satnow_repository_entry_list_free(head);
-            free(entry->ciphertext);
+            if (entry->ciphertext) {
+                free(entry->ciphertext);
+                entry->ciphertext = NULL;
+            }
             free(entry);
+            entry = NULL;
             fclose(repo);
             pthread_mutex_unlock(&repository_mutex);
             return NULL;
@@ -524,7 +569,7 @@ struct repository_entry *satnow_repository_entry_list() {
                 entry->plaintext = NULL;
                 entry->plaintext_len = 0;
             }
-            entry->plaintext = malloc(entry->plaintext_len + 1);
+            entry->plaintext = calloc(sizeof(unsigned char), entry->ciphertext_len + EVP_MAX_BLOCK_LENGTH);
 
             if (satnow_encrypt_ciphertext2text(entry->ciphertext
                     , (int)entry->ciphertext_len
@@ -589,6 +634,7 @@ static struct repository_entry_content* create_repository_content_element(const 
     if (new_node->content == NULL) {
         perror("Failed to duplicate string");
         free(new_node);
+        new_node = NULL;
         exit(EXIT_FAILURE);
     }
     new_node->content_len = strlen(content);
@@ -609,6 +655,7 @@ static void free_repository_content_list(struct repository_entry_content *head) 
     while (current != NULL) {
         struct repository_entry_content *next = current->next;
         free(current->content);
+        current->content = NULL;
         free(current);
         current = next;
     }
