@@ -106,7 +106,7 @@ void satnow_encrypt_ciphertext(const unsigned char *plaintext
         handleErrors("EVP_EncryptFinal_ex");
     *ciphertext_len += len;
 
-    //EVP_CIPHER_CTX_free(ctx);
+    EVP_CIPHER_CTX_free(ctx);
 }
 
 /**

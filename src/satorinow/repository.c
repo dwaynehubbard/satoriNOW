@@ -424,6 +424,10 @@ void satnow_repository_entry_append(const char *buffer, int length) {
         /** EMPTY REPO */
         struct repository_entry *head = calloc(1, sizeof(struct repository_entry));
         write_repository_entry(repo, head, REPOSITORY_MARKER, REPOSITORY_MARKER_LEN);
+        if (head->ciphertext) {
+            free(head->ciphertext);
+            head->ciphertext = NULL;
+        }
         free(head);
         head = NULL;
     }

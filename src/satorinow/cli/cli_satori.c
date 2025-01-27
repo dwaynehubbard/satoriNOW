@@ -231,11 +231,24 @@ static char *cli_neuron_register(struct satnow_cli_args *request) {
         satnow_repository_entry_append(buffer, (int)strlen(buffer));
         satnow_cli_send_response(request->fd, CLI_DONE, "Neuron Registered.\n");
         free(contents);
+        contents = NULL;
+
+        cJSON_Delete(json);
+        json = NULL;
     }
 
-    free(host);
-    free(name);
-    free(pass);
+    if (host) {
+        free(host);
+        host = NULL;
+    }
+    if (name) {
+        free(name);
+        name = NULL;
+    }
+    if (pass) {
+        free(pass);
+        pass = NULL;
+    }
 
     return 0;
 }
