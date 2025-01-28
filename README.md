@@ -128,6 +128,21 @@ PARENT	 CHILD	CHARITY	AUTO	    WALLET	     VAULT	  REWARD	POINTED		DATE
 NEURON 'satori-001' HAS 36 DELEGATED NEURONS
 ```
 
+### NEURON PING
+
+Use:
+
+> satoricli neuron ping _nickname_
+
+to ping the specified Satori neuron. This will display the timestamp returned by the neuron as well as the time required
+to service the HTTP ping request.
+
+```
+$ ./build/satoricli neuron ping satori-001
+'satori-001' reports current time '2025-01-28 22:34:51', ping time: 1003.985336 ms
+
+```
+
 ### NEURON STATS
 
 Use:

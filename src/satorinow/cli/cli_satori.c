@@ -39,6 +39,7 @@
 #endif
 
 static char *cli_neuron_parent_status(struct satnow_cli_args *request);
+static char *cli_neuron_ping(struct satnow_cli_args *request);
 static char *cli_neuron_register(struct satnow_cli_args *request);
 static char *cli_neuron_system_metrics(struct satnow_cli_args *request);
 static char *cli_neuron_stats(struct satnow_cli_args *request);
@@ -105,6 +106,16 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , cli_neuron_vault_transfer
         , 0
     },
+    {
+        { "neuron", "ping", NULL }
+        , "Ping the specified neuron"
+        , "Usage: neuron ping ( <host:ip> | <nickname> )"
+        , 0
+        , 0
+        , 0
+        , cli_neuron_ping
+        , 0
+    },
 };
 
 /**
@@ -124,6 +135,12 @@ int satnow_register_satori_cli_operations() {
         satnow_cli_register(&satori_cli_operations[i]);
     }
     return 0;
+}
+
+static double time_diff_ms(struct timespec start, struct timespec end) {
+    double start_ms = start.tv_sec * 1000.0 + start.tv_nsec / 1.0e6;
+    double end_ms = end.tv_sec * 1000.0 + end.tv_nsec / 1.0e6;
+    return end_ms - start_ms;
 }
 
 /**
@@ -500,6 +517,152 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
                         session->buffer_len = 0;
                     }
                 }
+            }
+            current = current->next;
+        }
+        satnow_repository_entry_list_free(list);
+        free(session);
+    }
+    satnow_cli_send_response(request->fd, CLI_DONE, "\n");
+    return 0;
+}
+
+static char *cli_neuron_ping(struct satnow_cli_args *request) {
+    struct repository_entry *list = NULL;
+    struct neuron_session *session = NULL;
+
+    if (!satnow_repository_password_valid()) {
+        satnow_cli_request_repository_password(request->fd);
+    }
+
+    for (int i = 0; i < request->argc; i++) {
+        printf("ARG[%d]: %s\n", i, request->argv[i]);
+    }
+
+    /** neuron ping ( <host:ip> | <nickname> ) [json] */
+    if (request->argc < 3 || request->argc > 4) {
+        satnow_cli_send_response(request->fd, CLI_MORE, request->ref->syntax);
+        satnow_cli_send_response(request->fd, CLI_DONE, "\n");
+        return 0;
+    }
+
+    list = satnow_repository_entry_list();
+    if (list) {
+        struct repository_entry *current = list;
+        session = calloc(1, sizeof(*session));
+        session->buffer = NULL;
+        session->buffer_len = 0;
+
+        while (current) {
+#ifdef __DEBUG__
+            printf("Entry:\n");
+            printf("  Salt: ");
+            for (int i = 0; i < SALT_LEN; i++) printf("%02x", current->salt[i]);
+            printf("\n");
+            printf("  IV: ");
+            for (int i = 0; i < IV_LEN; i++) printf("%02x", current->iv[i]);
+            printf("\n");
+            printf("  Ciphertext length: %lu\n", current->ciphertext_len);
+#endif
+
+            if (current->plaintext) {
+                free(current->plaintext);
+                current->plaintext = NULL;
+            }
+            current->plaintext = malloc(current->ciphertext_len + 1);
+            if (!current->plaintext) {
+                printf("Out of memory\n");
+            }
+            else {
+                cJSON *json = NULL;
+
+                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, (int *)&current->plaintext_len);
+                current->plaintext[current->plaintext_len] = '\0';
+
+                json = cJSON_Parse((char *)current->plaintext);
+                if (!json) {
+                    fprintf(stderr, "Invalid JSON format. [%s]\n", (char *)current->plaintext);
+                } else {
+                    const cJSON *json_host = cJSON_GetObjectItemCaseSensitive(json, "host");
+                    const cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
+                    const cJSON *json_nickname = cJSON_GetObjectItemCaseSensitive(json, "nickname");
+
+                    session->host = json_host && json_host->valuestring
+                        ? satnow_json_string_unescape(json_host->valuestring)
+                        : NULL;
+
+                    session->pass = json_password && json_password->valuestring
+                        ? satnow_json_string_unescape(json_password->valuestring)
+                        : NULL;
+
+                    session->nickname = json_nickname && json_nickname->valuestring
+                        ? satnow_json_string_unescape(json_nickname->valuestring)
+                        : NULL;
+
+                    if ((session->host && !strcasecmp(session->host, request->argv[2])) || (session->nickname && !strcasecmp(session->nickname, request->argv[2]))) {
+                        struct timespec beforeTime, afterTime;
+                        double pingTime;
+
+                        clock_gettime(CLOCK_MONOTONIC, &beforeTime);
+                        satnow_http_neuron_ping(session);
+                        clock_gettime(CLOCK_MONOTONIC, &afterTime);
+                        pingTime = time_diff_ms(beforeTime, afterTime);
+
+                        if (request->argc == 3 && !strcasecmp(request->argv[2], "json")) {
+                            satnow_cli_send_response(request->fd, CLI_MORE, session->buffer);
+                        } else {
+                            char tbuf[1024];
+                            cJSON *ping = cJSON_Parse(session->buffer);
+
+                            if (ping == NULL) {
+                                fprintf(stderr, "Error parsing JSON\n");
+                                break;
+                            }
+
+                            if (!cJSON_IsObject(ping)) {
+                                fprintf(stderr, "Error: response is not a valid JSON array\n");
+                                cJSON_Delete(ping);
+                                break;
+                            }
+
+                            cJSON *now = cJSON_GetObjectItem(ping, "now");
+                            if (now && now->valuestring) {
+                                snprintf(tbuf, sizeof(tbuf), "'%s' reports current time '%s', ping time: %f ms\n", request->argv[2], now->valuestring, pingTime);
+                                satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
+                            }
+
+                            if (now) {
+                                cJSON_Delete(now);
+                                now = NULL;
+                            }
+                        }
+                    }
+
+                    if (session->host) {
+                        free(session->host);
+                        session->host = NULL;
+                    }
+                    if (session->pass) {
+                        free(session->pass);
+                        session->pass = NULL;
+                    }
+                    if (session->nickname) {
+                        free(session->nickname);
+                        session->nickname = NULL;
+                    }
+                    if (session->session) {
+                        free(session->session);
+                        session->session = NULL;
+                    }
+                    if (session->buffer) {
+                        free(session->buffer);
+                        session->buffer = NULL;
+                        session->buffer_len = 0;
+                    }
+                }
+
+                cJSON_Delete(json);
+                json = NULL;
             }
             current = current->next;
         }
