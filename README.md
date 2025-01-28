@@ -32,7 +32,7 @@ valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./build/sat
 
 Use:
 
-  satoricli help
+> satoricli help
 
 to display the list of available operations.
 
@@ -46,7 +46,7 @@ this password in a secure location as it cannot be recovered.
 
 Use:
 
-  satoricli repository show
+> satoricli repository show
 
 to display the contents of the SatoriNOW CLI repository. The repository is encrypted and intended to store Satori Neuron
 host, port, nickname, and password information.
@@ -55,7 +55,7 @@ host, port, nickname, and password information.
 
 Use:
 
-  satoricli neuron register <host>:<ip> <nickname>
+> satoricli neuron register _host:ip_ _nickname_
 
 to register a neuron.
 
