@@ -105,36 +105,6 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , cli_neuron_vault_transfer
         , 0
     },
-    {
-        { "neuron", "show", "cpu", NULL }
-        , "Generate an authenticated session on the specified neuron."
-        , "Usage: neuron show cpu"
-        , 0
-        , 0
-        , 0
-        , cli_neuron_unlock
-        , 0
-    },
-    {
-        { "neuron", "lock", NULL }
-        , "Generate an authenticated session on the specified neuron."
-        , "Usage: neuron lock (<ip>:<port>|<nickname>)"
-        , 0
-        , 0
-        , 0
-        , cli_neuron_unlock
-        , 0
-    },
-    {
-        { "unlock", NULL }
-        , "Generate an authenticated session on the specified neuron."
-        , "Usage: unlock"
-        , 0
-        , 0
-        , 0
-        , cli_neuron_unlock
-        , 0
-    },
 };
 
 /**
