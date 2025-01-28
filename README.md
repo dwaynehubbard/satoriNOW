@@ -8,7 +8,8 @@ This project is not associated with the Satori project or the Satori Association
 
 # build
 
-make
+make ;
+
 make install
 
 # run
