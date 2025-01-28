@@ -292,6 +292,7 @@ static char *cli_neuron_unlock(struct satnow_cli_args *request) {
 
             if (current->plaintext) {
                 free(current->plaintext);
+                current->plaintext = NULL;
             }
             current->plaintext = malloc(current->ciphertext_len + 1);
             if (!current->plaintext) {
@@ -311,17 +312,37 @@ static char *cli_neuron_unlock(struct satnow_cli_args *request) {
                     const cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
                     const cJSON *json_nickname = cJSON_GetObjectItemCaseSensitive(json, "nickname");
 
-                    session->host = satnow_json_string_unescape(json_host->valuestring);
-                    session->pass = satnow_json_string_unescape(json_password->valuestring);
-                    session->nickname = satnow_json_string_unescape(json_nickname->valuestring);
+                    session->host = json_host && json_host->valuestring
+                        ? satnow_json_string_unescape(json_host->valuestring)
+                        : NULL;
 
-                    if (!strcasecmp(session->host, request->argv[2]) || !strcasecmp(session->nickname, request->argv[2])) {
+                    session->pass = json_password && json_password->valuestring
+                        ? satnow_json_string_unescape(json_password->valuestring)
+                        : NULL;
+
+                    session->nickname = json_nickname && json_nickname->valuestring
+                        ? satnow_json_string_unescape(json_nickname->valuestring)
+                        : NULL;
+
+                    if ((session->host && !strcasecmp(session->host, request->argv[2])) || (session->nickname && !strcasecmp(session->nickname, request->argv[2]))) {
                         satnow_http_neuron_unlock(session);
                     }
 
-                    free(session->host);
-                    free(session->pass);
-                    free(session->nickname);
+                    cJSON_Delete(json);
+                    json = NULL;
+
+                    if (session->host) {
+                        free(session->host);
+                        session->host = NULL;
+                    }
+                    if (session->pass) {
+                        free(session->pass);
+                        session->pass = NULL;
+                    }
+                    if (session->nickname) {
+                        free(session->nickname);
+                        session->nickname = NULL;
+                    }
                 }
             }
             current = current->next;
@@ -373,6 +394,7 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
 
             if (current->plaintext) {
                 free(current->plaintext);
+                current->plaintext = NULL;
             }
             current->plaintext = malloc(current->ciphertext_len + 1);
             if (!current->plaintext) {
@@ -392,11 +414,19 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
                     const cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
                     const cJSON *json_nickname = cJSON_GetObjectItemCaseSensitive(json, "nickname");
 
-                    session->host = satnow_json_string_unescape(json_host->valuestring);
-                    session->pass = satnow_json_string_unescape(json_password->valuestring);
-                    session->nickname = satnow_json_string_unescape(json_nickname->valuestring);
+                    session->host = json_host && json_host->valuestring
+                        ? satnow_json_string_unescape(json_host->valuestring)
+                        : NULL;
 
-                    if (!strcasecmp(session->host, request->argv[3]) || !strcasecmp(session->nickname, request->argv[3])) {
+                    session->pass = json_password && json_password->valuestring
+                        ? satnow_json_string_unescape(json_password->valuestring)
+                        : NULL;
+
+                    session->nickname = json_nickname && json_nickname->valuestring
+                        ? satnow_json_string_unescape(json_nickname->valuestring)
+                        : NULL;
+
+                    if ((session->host && !strcasecmp(session->host, request->argv[3])) || (session->nickname && !strcasecmp(session->nickname, request->argv[3]))) {
                         satnow_http_neuron_unlock(session);
                         satnow_cli_send_response(request->fd, CLI_MORE, "Neuron Authenticated.\n");
 
@@ -478,20 +508,28 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
                         satnow_cli_send_response(request->fd, CLI_MORE, "\n");
                     }
 
+                    cJSON_Delete(json);
+                    json = NULL;
+
                     if (session->host) {
                         free(session->host);
+                        session->host = NULL;
                     }
                     if (session->pass) {
                         free(session->pass);
+                        session->pass = NULL;
                     }
                     if (session->nickname) {
                         free(session->nickname);
+                        session->nickname = NULL;
                     }
                     if (session->session) {
                         free(session->session);
+                        session->session = NULL;
                     }
                     if (session->buffer) {
                         free(session->buffer);
+                        session->buffer = NULL;
                     }
                 }
             }
@@ -544,6 +582,7 @@ static char *cli_neuron_system_metrics(struct satnow_cli_args *request) {
 
             if (current->plaintext) {
                 free(current->plaintext);
+                current->plaintext = NULL;
             }
             current->plaintext = malloc(current->ciphertext_len + 1);
             if (!current->plaintext) {
@@ -563,11 +602,19 @@ static char *cli_neuron_system_metrics(struct satnow_cli_args *request) {
                     const cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
                     const cJSON *json_nickname = cJSON_GetObjectItemCaseSensitive(json, "nickname");
 
-                    session->host = satnow_json_string_unescape(json_host->valuestring);
-                    session->pass = satnow_json_string_unescape(json_password->valuestring);
-                    session->nickname = satnow_json_string_unescape(json_nickname->valuestring);
+                    session->host = json_host && json_host->valuestring
+                        ? satnow_json_string_unescape(json_host->valuestring)
+                        : NULL;
 
-                    if (!strcasecmp(session->host, request->argv[3]) || !strcasecmp(session->nickname, request->argv[3])) {
+                    session->pass = json_password && json_password->valuestring
+                        ? satnow_json_string_unescape(json_password->valuestring)
+                        : NULL;
+
+                    session->nickname = json_nickname && json_nickname->valuestring
+                        ? satnow_json_string_unescape(json_nickname->valuestring)
+                        : NULL;
+
+                    if ((session->host && !strcasecmp(session->host, request->argv[3])) || (session->nickname && !strcasecmp(session->nickname, request->argv[3]))) {
                         satnow_http_neuron_unlock(session);
                         satnow_cli_send_response(request->fd, CLI_MORE, "Neuron Authenticated.\n");
 
@@ -690,28 +737,39 @@ static char *cli_neuron_system_metrics(struct satnow_cli_args *request) {
                         satnow_cli_send_response(request->fd, CLI_MORE, "\n");
                     }
 
+                    cJSON_Delete(json);
+                    json = NULL;
+
                     if (session->host) {
                         free(session->host);
+                        session->host = NULL;
                     }
                     if (session->pass) {
                         free(session->pass);
+                        session->pass = NULL;
                     }
                     if (session->nickname) {
                         free(session->nickname);
+                        session->nickname = NULL;
                     }
                     if (session->session) {
                         free(session->session);
+                        session->session = NULL;
                     }
                     if (session->buffer) {
                         free(session->buffer);
+                        session->buffer = NULL;
                     }
                 }
-                cJSON_Delete(json);
             }
             current = current->next;
         }
         satnow_repository_entry_list_free(list);
-        free(session);
+
+        if (session) {
+            free(session);
+            session = NULL;
+        }
     }
     satnow_cli_send_response(request->fd, CLI_DONE, "\n");
     return 0;
@@ -758,6 +816,7 @@ static char *cli_neuron_stats(struct satnow_cli_args *request) {
 
             if (current->plaintext) {
                 free(current->plaintext);
+                current->plaintext = NULL;
             }
             current->plaintext = malloc(current->ciphertext_len + 1);
             if (!current->plaintext) {
@@ -778,13 +837,21 @@ static char *cli_neuron_stats(struct satnow_cli_args *request) {
                     const cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
                     const cJSON *json_nickname = cJSON_GetObjectItemCaseSensitive(json, "nickname");
 
-                    session->host = satnow_json_string_unescape(json_host->valuestring);
-                    session->pass = satnow_json_string_unescape(json_password->valuestring);
-                    session->nickname = satnow_json_string_unescape(json_nickname->valuestring);
+                    session->host = json_host && json_host->valuestring
+                        ? satnow_json_string_unescape(json_host->valuestring)
+                        : NULL;
+
+                    session->pass = json_password && json_password->valuestring
+                        ? satnow_json_string_unescape(json_password->valuestring)
+                        : NULL;
+
+                    session->nickname = json_nickname && json_nickname->valuestring
+                        ? satnow_json_string_unescape(json_nickname->valuestring)
+                        : NULL;
 
                     if (request->argc == 2
-                        || !strcasecmp(session->host, request->argv[2])
-                        || !strcasecmp(session->nickname, request->argv[2])) {
+                        || (session->host && !strcasecmp(session->host, request->argv[2]))
+                        || (session->nickname && !strcasecmp(session->nickname, request->argv[2]))) {
 
                         satnow_http_neuron_unlock(session);
                         printf("satnow_http_neuron_stats(BEFORE) buffer len: %ld\n", session->buffer_len);
@@ -793,26 +860,33 @@ static char *cli_neuron_stats(struct satnow_cli_args *request) {
                         satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
                     }
 
+                    cJSON_Delete(json);
+                    json = NULL;
+
                     if (session->host) {
                         free(session->host);
+                        session->host = NULL;
                     }
                     if (session->pass) {
                         free(session->pass);
+                        session->pass = NULL;
                     }
                     if (session->nickname) {
                         free(session->nickname);
+                        session->nickname = NULL;
                     }
                     if (session->session) {
                         free(session->session);
+                        session->session = NULL;
                     }
                     if (session->buffer) {
                         free(session->buffer);
+                        session->buffer = NULL;
                     }
 
                     free(session);
+                    session = NULL;
                 }
-
-                cJSON_Delete(json);
             }
             current = current->next;
         }
@@ -862,6 +936,7 @@ static char *cli_neuron_vault_transfer(struct satnow_cli_args *request) {
 
             if (current->plaintext) {
                 free(current->plaintext);
+                current->plaintext = NULL;
             }
             current->plaintext = malloc(current->ciphertext_len + 1);
             if (!current->plaintext) {
@@ -881,11 +956,19 @@ static char *cli_neuron_vault_transfer(struct satnow_cli_args *request) {
                     const cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
                     const cJSON *json_nickname = cJSON_GetObjectItemCaseSensitive(json, "nickname");
 
-                    session->host = satnow_json_string_unescape(json_host->valuestring);
-                    session->pass = satnow_json_string_unescape(json_password->valuestring);
-                    session->nickname = satnow_json_string_unescape(json_nickname->valuestring);
+                    session->host = json_host && json_host->valuestring
+                        ? satnow_json_string_unescape(json_host->valuestring)
+                        : NULL;
 
-                    if (!strcasecmp(session->host, request->argv[6]) || !strcasecmp(session->nickname, request->argv[6])) {
+                    session->pass = json_password && json_password->valuestring
+                        ? satnow_json_string_unescape(json_password->valuestring)
+                        : NULL;
+
+                    session->nickname = json_nickname && json_nickname->valuestring
+                        ? satnow_json_string_unescape(json_nickname->valuestring)
+                        : NULL;
+
+                    if ((session->host && !strcasecmp(session->host, request->argv[6])) || (session->nickname && !strcasecmp(session->nickname, request->argv[6]))) {
                         satnow_cli_send_response(request->fd, CLI_MORE, "Neuron located. Connecting...\n");
                         satnow_http_neuron_unlock(session);
                         satnow_http_neuron_vault(session);
@@ -899,6 +982,9 @@ static char *cli_neuron_vault_transfer(struct satnow_cli_args *request) {
                         satnow_http_neuron_vault_transfer(session, request->argv[3] /* amount */, request->argv[5] /* destination address */);
                         satnow_cli_send_response(request->fd, CLI_MORE, session->csrf_token);
                     }
+
+                    cJSON_Delete(json);
+                    json = NULL;
 
                     if (session->host) {
                         free(session->host);
@@ -929,7 +1015,11 @@ static char *cli_neuron_vault_transfer(struct satnow_cli_args *request) {
             current = current->next;
         }
         satnow_repository_entry_list_free(list);
-        free(session);
+
+        if (session) {
+            free(session);
+            session = NULL;
+        }
     }
     satnow_cli_send_response(request->fd, CLI_DONE, "\n");
     return 0;

@@ -24,6 +24,8 @@
 
 #include <satorinow.h>
 
+struct neuron_session;
+
 struct satnow_cli_args {
     int fd;
     int argc;
@@ -40,6 +42,7 @@ struct satnow_cli_op {
     int user_command_argc;
 
     char *(*handler)(struct satnow_cli_args *request);
+
     struct satnow_cli_op *next;
 };
 
