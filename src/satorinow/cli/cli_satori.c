@@ -57,7 +57,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
     },
     {
-{ "neuron", "register", NULL }
+        { "neuron", "register", NULL }
         , "Register a protected neuron."
         , "Usage: neuron register <ip>:<port> [<nickname>]"
         , 0
@@ -76,7 +76,7 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
     },
     {
-{ "neuron", "system", "metrics", NULL }
+        { "neuron", "system", "metrics", NULL }
         , "Display neuron system metrics"
         , "Usage: neuron system metrics (<ip>:<port> | <nickname>) [json]"
         , 0
