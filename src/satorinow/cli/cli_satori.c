@@ -469,9 +469,6 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
                                 }
                             }
 
-                            // Cleanup
-                            cJSON_Delete(json);
-
                             snprintf(tbuf, sizeof(tbuf), "\nNEURON '%s' HAS %d DELEGATED NEURONS\n", request->argv[3], neuron_count);
                             satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
                         }
@@ -500,6 +497,7 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
                     if (session->buffer) {
                         free(session->buffer);
                         session->buffer = NULL;
+                        session->buffer_len = 0;
                     }
                 }
             }

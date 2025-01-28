@@ -170,7 +170,10 @@ int satnow_http_neuron_unlock(struct neuron_session *session) {
                 }
             } while (!done);
 
-            fclose(cookie);
+            if (cookie) {
+                fclose(cookie);
+                cookie = NULL;
+            }
             if (remove(cookie_file)) {
                 perror("Error deleting cookie file");
             }
