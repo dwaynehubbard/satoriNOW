@@ -194,7 +194,7 @@ Neuron system metrics to follow:
 
 Use:
 
-> ./build/satoricli neuron vault transfer 0.01 satori EUR...8BFh satori-001
+> ./build/satoricli neuron vault transfer _amount_ satori _wallet_address_ _nickname_
 
 to transfer 0.01 $SATORI from the 'satori-001' vault to the specified destination wallet
 
