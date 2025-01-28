@@ -66,7 +66,7 @@ Use:
 
 ```
 $ ./build/satoricli repository show
-	HOST	NICKNAME	PASSWORD
+	HOST	                NICKNAME	PASSWORD
 	192.168.1.100:24601	satori-001	******************************
 ```
 
@@ -116,30 +116,7 @@ PARENT	 CHILD	CHARITY	AUTO	    WALLET	     VAULT	  REWARD	POINTED		DATE
  36517	742754	     NO	  NO	ERC1...9Skr	EeRP...vqeQ	0.05793529	    YES		2024-12-31 01:50:36.573821+00:00
  36517	731075	     NO	  NO	ETTY...CG65	EYB2...jZDA	0.05782454	    YES		2024-12-11 04:04:00.604563+00:00
  36517	741079	     NO	  NO	EHAJ...uuHg	EWus...7pJM	0.05847362	    YES		2024-12-17 15:46:51.311670+00:00
- 36517	742763	     NO	  NO	EVqq...XQJk	EXQ7...CVQf	0.05850580	    YES		2024-12-26 01:37:05.237101+00:00
- 36517	742816	     NO	  NO	ENR8...odwF	ENk9...FkS9	0.05852359	    YES		2024-12-27 01:02:22.303726+00:00
- 36517	495599	     NO	  NO	EcWL...3YzZ	EfRU...Fka2	0.05868400	    YES		2024-10-25 05:01:17.081909+00:00
- 36517	776982	     NO	  NO	EdZF...PecP	EQpw...65LC	0.06010722	    YES		2025-01-17 00:42:02.601209+00:00
- 36517	776983	     NO	  NO	EU8b...HMi5	EQDr...j4ir	0.06010722	    YES		2025-01-17 01:01:35.680172+00:00
- 36517	686837	     NO	  NO	EJJx...niAb	EgEC...HMzh	0.06010722	    YES		2024-11-13 03:49:19.895696+00:00
- 36517	776985	     NO	  NO	ENEC...LAWF	Ebik...Hy14	0.06010722	    YES		2025-01-21 00:49:26.391670+00:00
- 36517	477758	     NO	  NO	EWco...Mki5	ETmK...znX7	0.06010722	    YES		2024-10-25 05:04:47.792558+00:00
- 36517	453006	     NO	  NO	EZkd...WJSi	EYnj...Tx6c	0.06010722	    YES		2024-10-25 05:18:32.565503+00:00
- 36517	560206	     NO	  NO	ELNd...V9Fk	EWqR...JL5w	0.06010722	    YES		2024-10-25 04:43:46.001991+00:00
- 36517	579722	     NO	  NO	ENoN...D6xi	EUmY...j62r	0.06010722	    YES		2024-10-25 04:28:46.058991+00:00
- 36517	560205	     NO	  NO	EaAF...u3wt	EKRT...4ijq	0.06010722	    YES		2024-10-25 04:33:16.287086+00:00
- 36517	283254	     NO	  NO	EgUW...Qkbd	EeSN...oywG	0.06010722	    YES		2024-10-25 06:05:33.822054+00:00
- 36517	559880	     NO	  NO	EUw8...i9bn	EbUt...7n3r	0.06010722	    YES		2024-10-25 04:56:02.608659+00:00
- 36517	441503	     NO	  NO	EPhp...edyb	EYWP...pB7R	0.06010722	    YES		2024-10-25 05:25:24.045841+00:00
- 36517	477717	     NO	  NO	EZNC...RCDW	EcNq...rji5	0.06010722	    YES		2024-10-25 05:13:27.953333+00:00
- 36517	688905	     NO	  NO	EX1A...nJN6	ETNX...Udkd	0.06010722	    YES		2024-11-14 03:41:33.645863+00:00
- 36517	586154	     NO	  NO	Eg8g...bhZA	ESWu...4aV5	0.06010722	    YES		2024-10-25 04:22:14.693348+00:00
- 36517	267523	     NO	  NO	EKVH...bCPM	EecH...YppS	0.06010722	    YES		2024-10-25 06:17:40.749995+00:00
- 36517	441294	     NO	  NO	ENrL...4v1M	EHo4...HjAL	0.06010722	    YES		2024-10-25 05:51:13.993719+00:00
- 36517	686404	     NO	  NO	Eext...i4wd	Edkp...Tq1Y	0.06010722	    YES		2024-11-13 03:28:51.592963+00:00
- 36517	702680	     NO	  NO	EbMd...iavo	EYrm...U351	0.06010722	    YES		2024-11-19 05:12:35.566161+00:00
- 36517	688871	     NO	  NO	EcDR...zAwR	EVAi...stTF	0.06010722	    YES		2024-11-14 03:20:13.051704+00:00
- 36517	702651	     NO	  NO	EKYq...MxQN	EPDT...qKUL	0.06010722	    YES		2024-11-19 04:33:03.429253+00:00
+ . . .
  36517	403071	     NO	  NO	Ecyq...vgji	EXim...Jy7V	0.06010722	    YES		2024-10-25 05:41:16.628615+00:00
  36517	686802	     NO	  NO	EQSd...jd4y	Ecb1...keqX	0.06010722	    YES		2024-11-13 03:41:35.127929+00:00
  36517	687051	     NO	  NO	ELo2...UVWe	EaYo...pGes	0.06010722	    YES		2024-11-13 04:24:26.517365+00:00
@@ -149,5 +126,67 @@ PARENT	 CHILD	CHARITY	AUTO	    WALLET	     VAULT	  REWARD	POINTED		DATE
  36517	403327	     NO	  NO	EfgR...95fy	ELMd...V9Q1	0.06010722	    YES		2024-10-25 05:32:36.711479+00:00
 
 NEURON 'satori-001' HAS 36 DELEGATED NEURONS
+```
+
+### NEURON STATS
+
+Use:
+
+> satoricli neuron stats _nickname_
+
+to display the current stats of the specified Satori neuron. If you do not specify a _nickname_, all neurons in the
+repository will be queried and displayed.
+
+```
+$ ./build/satoricli neuron stats satori-001
+satori-001: This Neuron has participated in 630 competitions today, with an average placement of 52 out of 100
+
+```
+
+### NEURON SYSTEM METRICS
+
+Use:
+
+> satoricli neuron system metrics _nickname_
+
+to display the current system metrics of the specified Satori neuron.
+
+```
+$ ./build/satoricli neuron system metrics satori-001
+Neuron Authenticated.
+Neuron system metrics to follow:
+
+	                BOOT TIME: 1734803853.000000
+	                      CPU: 
+	                CPU COUNT: 16
+	        CPU USAGE PERCENT: 84.900000
+	                DISK FREE: 1637072609280
+	             DISK PERCENT: 14.400000
+	               DISK TOTAL: 2014094303232
+	                DISK USED: 274635747328
+	            MEMORY ACTIVE: 35858862080
+	         MEMORY AVAILABLE: 32068087808
+	           MEMORY BUFFERS: 2003234816
+	            MEMORY CACHED: 26643701760
+	              MEMORY FREE: 6133522432
+	          MEMORY INACTIVE: 20354072576
+	           MEMORY PERCENT: 52.100000
+	            MEMORY SHARED: 1964589056
+	              MEMORY SLAB: 2649280512
+	             MEMORY TOTAL: 66954407936
+	              MEMORY USED: 32173948928
+	 MEMORY AVAILABLE PERCENT: 47.895409
+	          MEMORY TOTAL GB: 62
+	                SWAP FREE: 0
+	             SWAP PERCENT: 0.000000
+	                 SWAP SIN: 0
+	                SWAP SOUT: 0
+	               SWAP TOTAL: 0
+	                SWAP USED: 0
+	                TIMESTAMP: 1738088255.672162
+	                   UPTIME: 3284402.672160
+	                  VERSION: 0.3.8
+
+
 ```
 
