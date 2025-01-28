@@ -883,12 +883,14 @@ static char *cli_neuron_stats(struct satnow_cli_args *request) {
                         free(session->buffer);
                         session->buffer = NULL;
                     }
-
-                    free(session);
-                    session = NULL;
                 }
             }
             current = current->next;
+
+            if (session) {
+                free(session);
+                session = NULL;
+            }
         }
         satnow_repository_entry_list_free(list);
     }
