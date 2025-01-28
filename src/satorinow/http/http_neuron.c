@@ -36,6 +36,11 @@
 
 static void extract_csrf_token(struct neuron_session *data);
 
+/**
+ * static void extract_csrf_token(struct neuron_session *data)
+ * Extract the CSRF token from the neuron_session contents
+ * @param data
+ */
 static void extract_csrf_token(struct neuron_session *data) {
     if (data) {
         char *token = strstr(data->buffer, "name=\"csrf_token\"");
@@ -67,31 +72,29 @@ static void extract_csrf_token(struct neuron_session *data) {
  * HTTP write callback function
  */
 size_t write_callback(void *contents, size_t size, size_t nmemb, void *context) {
-    size_t total_size = size * nmemb; // Calculate total data size
+    size_t total_size = size * nmemb;
     struct neuron_session *data = (struct neuron_session *)context;
     printf("write_callback() increasing buffer [%ld] by [%ld]\n", data->buffer_len, total_size);
 
-    // Reallocate buffer to fit the new data
+    /** Reallocate buffer to fit the new data */
     char *ptr = realloc(data->buffer, data->buffer_len + total_size + 1);
     if (ptr == NULL) {
         fprintf(stderr, "realloc() failed\n");
-        return 0; // Returning 0 tells libcurl to stop the operation
+        return 0;
     }
 
     data->buffer = ptr;
     memcpy(&(data->buffer[data->buffer_len]), contents, total_size);
     data->buffer_len += total_size;
-    data->buffer[data->buffer_len] = '\0'; // Null-terminate the string
+    data->buffer[data->buffer_len] = '\0';
 
     return total_size;
 }
 
 /**
  * int satnow_http_neuron_unlock(struct neuron_session *session)
- * Generate HTTP request to <neuron>/unlock and assign the session cookie
- * to the struct neuron_session session field
- *
- * The calling function must free the memory allocated for the session
+ * Unlock the neuron and grab the session cookie
+ * @param data
  */
 int satnow_http_neuron_unlock(struct neuron_session *session) {
     char url[URL_MAX];
@@ -179,7 +182,8 @@ int satnow_http_neuron_unlock(struct neuron_session *session) {
 
 /**
  * int satnow_http_neuron_proxy_parent_status(struct neuron_session *session)
- * Generate HTTP request to <neuron>/proxy/parent/status
+ * Retrieve the neuron's status as a parent
+ * @param data
  */
 int satnow_http_neuron_proxy_parent_status(struct neuron_session *session) {
     char url[URL_MAX];
@@ -230,7 +234,8 @@ int satnow_http_neuron_proxy_parent_status(struct neuron_session *session) {
 
 /**
  * int satnow_http_neuron_system_metrics(struct neuron_session *session)
- * Generate HTTP request to <neuron>/system_metrics
+ * Access the neuron's system metrics
+ * @param data
  */
 int satnow_http_neuron_system_metrics(struct neuron_session *session) {
     char url[URL_MAX];
@@ -280,6 +285,11 @@ int satnow_http_neuron_system_metrics(struct neuron_session *session) {
     return 0;
 }
 
+/**
+ * int satnow_http_neuron_stats(struct neuron_session *session)
+ * Access the neuron's daily stats
+ * @param data
+ */
 int satnow_http_neuron_stats(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
@@ -327,6 +337,11 @@ int satnow_http_neuron_stats(struct neuron_session *session) {
     return 0;
 }
 
+/**
+ * int satnow_http_neuron_vault(struct neuron_session *session)
+ * Access the neuron's vault and assign the CSRF token to the session structure
+ * @param data
+ */
 int satnow_http_neuron_vault(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
@@ -374,6 +389,11 @@ int satnow_http_neuron_vault(struct neuron_session *session) {
     return 0;
 }
 
+/**
+ * int satnow_http_neuron_vault_transfer(struct neuron_session *session, char *amount_str, char *wallet)
+ * Transfer the specified amount of SATORI from the neuron's vault to the specified wallet address
+ * @param data
+ */
 int satnow_http_neuron_vault_transfer(struct neuron_session *session, char *amount_str, char *wallet) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
@@ -423,6 +443,11 @@ int satnow_http_neuron_vault_transfer(struct neuron_session *session, char *amou
     return 0;
 }
 
+/**
+ * int satnow_http_neuron_decrypt_vault(struct neuron_session *session)
+ * Decrypt the neuron's vault
+ * @param data
+ */
 int satnow_http_neuron_decrypt_vault(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];

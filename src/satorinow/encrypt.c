@@ -26,11 +26,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
-#include <unistd.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/hmac.h>
-#include <satorinow.h>
 
 /**
  * static void handleErrors(const char *reason)

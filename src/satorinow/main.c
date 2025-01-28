@@ -30,7 +30,6 @@
 #include <satorinow.h>
 #include "satorinow/cli.h"
 #include "satorinow/cli/cli_satori.h"
-#include "satorinow/encrypt.h"
 #include "satorinow/repository.h"
 
 static char config_dir[PATH_MAX];
@@ -45,12 +44,17 @@ const char *satnow_config_directory() {
     return config_dir;
 }
 
-int satnow_do_shutdown() {
+/**
+ * int satnow_ready_to_shutdown()
+ * Return shutdown flag
+ * @return 
+ */
+int satnow_ready_to_shutdown() {
     return do_shutdown;
 }
 
 /**
- * void shutdown(int signum)
+ * void satnow_shutdown(int signum)
  * Trigger shutdown
  * @param signum
  */

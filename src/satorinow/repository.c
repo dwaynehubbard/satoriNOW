@@ -112,6 +112,10 @@ void satnow_repository_init(const char *config_dir) {
     memset(repository_password, 0, sizeof(repository_password));
 }
 
+/**
+ * void satnow_repository_shutdown()
+ * Release repository resources
+ */
 void satnow_repository_shutdown() {
     pthread_mutex_destroy(&repository_mutex);
 }
@@ -142,6 +146,11 @@ int satnow_repository_password_valid() {
     return TRUE;
 }
 
+/**
+ * static int repository_password_forget()
+ * Reset the remembered password
+ * @return
+ */
 static int repository_password_forget() {
     memset(repository_password, 0, sizeof(repository_password));
     repository_password_expire = 0;
@@ -371,6 +380,14 @@ static char *cli_repository_show(struct satnow_cli_args *request) {
     return 0;
 }
 
+/**
+ * static void write_repository_entry(FILE *repo, struct repository_entry *entry, const char *buffer, int length)
+ * Helper to write the repository entry to the repository file
+ * @param repo
+ * @param entry
+ * @param buffer
+ * @param length
+ */
 static void write_repository_entry(FILE *repo, struct repository_entry *entry, const char *buffer, int length) {
 #if __DEBUG__
     printf("Opened repository\n");

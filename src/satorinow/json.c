@@ -27,6 +27,11 @@
 #include <satorinow.h>
 #include "satorinow/json.h"
 
+/**
+ * char *satnow_json_string_escape(const char *input)
+ * Add escaping for quotes
+ * @param input
+ */
 char *satnow_json_string_escape(const char *input) {
     char *str = NULL;
     char *escaped = NULL;
@@ -52,6 +57,11 @@ char *satnow_json_string_escape(const char *input) {
     return escaped;
 }
 
+/**
+ * char *satnow_json_string_unescape(const char *input)
+ * Remove escaping
+ * @param input
+ */
 char *satnow_json_string_unescape(const char *input) {
     char *unescaped = NULL;
     char *str = NULL;

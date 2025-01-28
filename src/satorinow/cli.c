@@ -181,7 +181,7 @@ void *satnow_cli_start() {
     pthread_mutex_unlock(&server_fd_mutex);
     printf("SatoriNOW listening for commands\n");
 
-    while (!satnow_do_shutdown()) {
+    while (!satnow_ready_to_shutdown()) {
 
         pthread_mutex_lock(&server_fd_mutex);
 
