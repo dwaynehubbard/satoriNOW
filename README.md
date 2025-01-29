@@ -10,7 +10,7 @@ This project is not associated with the Satori project or the Satori Association
 
 make ;
 
-make install
+make install  (optional)
 
 # run
 
@@ -37,7 +37,7 @@ Use:
 to display the list of available operations.
 
 ```
-$ ./build/satoricli help
+$ satoricli help
 
 help - Display supported commands
 neuron parent status - Display the specified neuron's parent status report
@@ -65,7 +65,7 @@ Use:
 > satoricli repository show
 
 ```
-$ ./build/satoricli repository show
+$ satoricli repository show
 	HOST	                NICKNAME	PASSWORD
 	192.168.1.100:24601	satori-001	******************************
 ```
@@ -82,7 +82,7 @@ Use:
 to register a neuron.
 
 ```
-$ ./build/satoricli neuron register 192.168.1.100:24601 satori-001
+$ satoricli neuron register 192.168.1.100:24601 satori-001
 Repository Password:
 
 Remember to store your SatoriNOW repository password in a secure location.
@@ -97,6 +97,26 @@ Neuron Registered.
 Once you have registered your Satori Neuron(s) you can utilize SatoriNOW CLI operations. You can reference neurons via
 host:port or nicknames.
 
+### NEURON ADDRESSES
+
+Use:
+
+> satoricli neuron addresses _nickname_
+
+to display the address(es) assigned to the specified neuron.
+
+```
+$ satoricli neuron addresses satori-001
+Repository Password:
+
+Remember to store your SatoriNOW repository password in a secure location.
+
+Neuron Authenticated.
+Neuron wallet addresses to follow:
+
+'satori-001' is mining to wallet address: EXeuBYgrq2pheyw1sorfztYhnkrRKB1pfE
+```
+
 ### NEURON PARENT STATUS
 
 Use:
@@ -106,7 +126,7 @@ Use:
 to display the current parent status of the specified Satori neuron.
 
 ```
-$ ./build/satoricli neuron parent status satori-001
+$ satoricli neuron parent status satori-001
 Neuron Authenticated.
 Neuron parent status to follow:
 
@@ -138,7 +158,7 @@ to ping the specified Satori neuron. This will display the timestamp returned by
 to service the HTTP ping request.
 
 ```
-$ ./build/satoricli neuron ping satori-001
+$ satoricli neuron ping satori-001
 'satori-001' reports current time '2025-01-28 22:34:51', ping time: 1003.985336 ms
 
 ```
@@ -153,7 +173,7 @@ to display the current stats of the specified Satori neuron. If you do not speci
 repository will be queried and displayed.
 
 ```
-$ ./build/satoricli neuron stats satori-001
+$ satoricli neuron stats satori-001
 satori-001: This Neuron has participated in 630 competitions today, with an average placement of 52 out of 100
 
 ```
@@ -167,7 +187,7 @@ Use:
 to display the current system metrics of the specified Satori neuron.
 
 ```
-$ ./build/satoricli neuron system metrics satori-001
+$ satoricli neuron system metrics satori-001
 Neuron Authenticated.
 Neuron system metrics to follow:
 
@@ -209,29 +229,42 @@ Neuron system metrics to follow:
 
 Use:
 
-> ./build/satoricli neuron vault transfer _amount_ satori _wallet_address_ _nickname_
+> satoricli neuron vault transfer _amount_ satori _wallet_address_ _nickname_
 
 to transfer 0.01 $SATORI from the 'satori-001' vault to the specified destination wallet
 
 ```
-./build/satoricli neuron vault transfer 0.01 satori EUR...8BFh satori-001
+satoricli neuron vault transfer 0.01 satori EUR...8BFh satori-001
 
 ```
 
-**Experimental**
+**Experimental**: This doesn't work yet
 
 ### NEURON UNLOCK
 
 Use:
 
-> ./build/satoricli neuron unlock _nickname_
+> satoricli neuron unlock _nickname_
 
 to unlock a Satori neuron and display the session cookie
 
 ```
-$ ./build/satoricli neuron unlock satori-001
+$ satoricli neuron unlock satori-001
 Neuron Unlocked. Session Cookie to follow:
 eyJhdXRoZW50aWNhdGVkIjp0cnVlLCJjc3JmX3Rva2VuIjoiZGQyMmQ4NmE0MjI3YjQ5ZDdmMGNiOWQ2MWNjYjNjZWE5NTk1ZjlhMiJ9.Z5pLeg.4eTONcfpjPhw5xrxFzfzEzTKcH4
+
+```
+
+### NEURON VAULT
+
+Use:
+
+> satoricli neuron vault _nickname_
+
+```
+$ satoricli neuron vault satori-001
+Connecting Neuron. CSRF token to follow:
+ImFkOWY5ZTkxMDdiMDdlNzRiYzM3NmU5ZWE1NzI2Nzc2YjA0MDI1ZDgi.Z5pxUA.ql6kmCgQZnHHK2lojoFUi8Xwyu8
 
 ```
 
