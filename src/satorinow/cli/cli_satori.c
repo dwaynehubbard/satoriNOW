@@ -312,7 +312,10 @@ static char *cli_neuron_unlock(struct satnow_cli_args *request) {
                         : NULL;
 
                     if ((session->host && !strcasecmp(session->host, request->argv[2])) || (session->nickname && !strcasecmp(session->nickname, request->argv[2]))) {
+                        char tbuf[1024];
                         satnow_http_neuron_unlock(session);
+                        snprintf(tbuf, sizeof(tbuf), "Neuron Unlocked. Session Cookie to follow:\n%s\n", session->session);
+                        satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
                     }
 
                     cJSON_Delete(json);
@@ -1108,7 +1111,7 @@ static char *cli_neuron_vault_transfer(struct satnow_cli_args *request) {
                         satnow_http_neuron_decrypt_vault(session);
                         satnow_cli_send_response(request->fd, CLI_INPUT_ECHO_OFF, "Proceed [Y/N]:");
                         printf("sleep");
-                        sleep(5);
+                        sleep(10);
                         printf("sleep done");
 
                         satnow_cli_send_response(request->fd, CLI_MORE, "Transferring satori\n");

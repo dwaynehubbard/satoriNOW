@@ -219,3 +219,19 @@ to transfer 0.01 $SATORI from the 'satori-001' vault to the specified destinatio
 ```
 
 **Experimental**
+
+### NEURON UNLOCK
+
+Use:
+
+> ./build/satoricli neuron unlock _nickname_
+
+to unlock a Satori neuron and display the session cookie
+
+```
+$ ./build/satoricli neuron unlock satori-001
+Neuron Unlocked. Session Cookie to follow:
+eyJhdXRoZW50aWNhdGVkIjp0cnVlLCJjc3JmX3Rva2VuIjoiZGQyMmQ4NmE0MjI3YjQ5ZDdmMGNiOWQ2MWNjYjNjZWE5NTk1ZjlhMiJ9.Z5pLeg.4eTONcfpjPhw5xrxFzfzEzTKcH4
+
+```
+

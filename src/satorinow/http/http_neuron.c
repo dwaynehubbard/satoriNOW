@@ -466,7 +466,17 @@ int satnow_http_neuron_vault_transfer(struct neuron_session *session, char *amou
 
     snprintf(url, sizeof(url), "http://%s/send_satori_transaction_from_vault/main", session->host);
     snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
-    snprintf(post_data, sizeof(post_data), "address=%s&amount=%s&sweep=false&csrf_token=%s", wallet, amount_str, session->csrf_token);
+    /*
+    snprintf(post_data, sizeof(post_data), "address=%s&amount=%s&sweep=false&csrf_token=%s&csrf_token=%s&submit=Send"
+             , wallet
+             , amount_str
+             , session->csrf_token
+             , session->csrf_token);
+
+     */
+    snprintf(post_data, sizeof(post_data), "address=%s&amount=%s&sweep=false&submit=Send"
+             , wallet
+             , amount_str);
     printf("satnow_http_neuron_vault_transfer: %s, %s, %s\n", session->session, response_file, post_data);
 
     curl = curl_easy_init();
