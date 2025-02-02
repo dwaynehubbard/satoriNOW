@@ -235,6 +235,62 @@ int satnow_http_neuron_mining_to_address(struct neuron_session *session) {
 }
 
 /**
+ * int satnow_http_neuron_pool_participants(struct neuron_session *session)
+ * Retrieve the neuron's pool participants
+ * @param data
+ */
+int satnow_http_neuron_pool_participants(struct neuron_session *session) {
+    char url[URL_MAX];
+    char url_data[URL_DATA_MAX];
+    char response_file[PATH_MAX];
+    CURL *curl;
+    CURLcode result;
+
+    time_t now = time(NULL);
+    if (now == -1) {
+        perror("Failed to get current time");
+        return -1;
+    }
+
+    snprintf(url, sizeof(url), "http://%s/pool/participants", session->host);
+    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
+    printf("satnow_http_neuron_pool_participants: %s, %s\n", session->session, response_file);
+
+    curl = curl_easy_init();
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+
+        struct curl_slist *headers = NULL;
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+        snprintf(url_data, sizeof(url_data), "Cookie: session=%s", session->session);
+        headers = curl_slist_append(headers, url_data);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)session);
+
+        if ((result = curl_easy_perform(curl)) != CURLE_OK) {
+            printf("satnow_http_neuron_pool_participants() failed: %s\n", curl_easy_strerror(result));
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            return -1;
+        }
+
+        const char *hold = session->buffer;
+        session->buffer = satnow_json_string_unescape(hold);
+        free(hold);
+
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+    }
+
+    return 0;
+}
+
+/**
  * int satnow_http_neuron_proxy_parent_status(struct neuron_session *session)
  * Retrieve the neuron's status as a parent
  * @param data

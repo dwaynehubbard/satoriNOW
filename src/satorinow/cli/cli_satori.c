@@ -41,6 +41,7 @@
 static char *cli_neuron_addresses(struct satnow_cli_args *request);
 static char *cli_neuron_parent_status(struct satnow_cli_args *request);
 static char *cli_neuron_ping(struct satnow_cli_args *request);
+static char *cli_neuron_pool_participants(struct satnow_cli_args *request);
 static char *cli_neuron_register(struct satnow_cli_args *request);
 static char *cli_neuron_system_metrics(struct satnow_cli_args *request);
 static char *cli_neuron_stats(struct satnow_cli_args *request);
@@ -67,6 +68,16 @@ static struct satnow_cli_op satori_cli_operations[] = {
         , 0
         , 0
         , cli_neuron_parent_status
+        , 0
+    },
+    {
+        { "neuron", "pool", "participants", NULL }
+        , "Display the specified neuron's pool participants"
+        , "Usage: neuron pool participants (<ip>:<port> | <nickname>) [json]"
+        , 0
+        , 0
+        , 0
+        , cli_neuron_pool_participants
         , 0
     },
     {
@@ -567,6 +578,192 @@ static char *cli_neuron_parent_status(struct satnow_cli_args *request) {
                         printf("satnow_http_neuron_proxy_parent_status(BEFORE) buffer len: %ld\n", session->buffer_len);
                         satnow_http_neuron_proxy_parent_status(session);
                         satnow_cli_send_response(request->fd, CLI_MORE, "Neuron parent status to follow:\n\n");
+                        if (request->argc == 5 && !strcasecmp(request->argv[4], "json")) {
+                            satnow_cli_send_response(request->fd, CLI_MORE, session->buffer);
+                        } else {
+                            char tbuf[1023];
+                            int neuron_count = 0;
+                            cJSON *element = NULL;
+                            cJSON *json = cJSON_Parse(session->buffer);
+
+                            if (json == NULL) {
+                                fprintf(stderr, "Error parsing JSON\n");
+                                break;
+                            }
+
+                            if (!cJSON_IsArray(json)) {
+                                fprintf(stderr, "Error: response is not a valid JSON array\n");
+                                cJSON_Delete(json);
+                                break;
+                            }
+
+                            snprintf(tbuf, sizeof(tbuf)
+                                        , "%6s\t%6s\t%7s\t%4s\t%10s\t%10s\t%8s\t%7s\t\t%s\n"
+                                        , "PARENT"
+                                        , "CHILD"
+                                        , "CHARITY"
+                                        , "AUTO"
+                                        , "WALLET"
+                                        , "VAULT"
+                                        , "REWARD"
+                                        , "POINTED"
+                                        , "DATE"
+                                    );
+                            satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
+
+                            cJSON_ArrayForEach(element, json) {
+                                if (cJSON_IsObject(element)) {
+                                    cJSON *parent = cJSON_GetObjectItem(element, "parent");
+                                    cJSON *child = cJSON_GetObjectItem(element, "child");
+                                    cJSON *charity = cJSON_GetObjectItem(element, "charity");
+                                    cJSON *automatic = cJSON_GetObjectItem(element, "automatic");
+                                    cJSON *address = cJSON_GetObjectItem(element, "address");
+                                    cJSON *vaultaddress = cJSON_GetObjectItem(element, "vaultaddress");
+                                    cJSON *reward = cJSON_GetObjectItem(element, "reward");
+                                    cJSON *pointed = cJSON_GetObjectItem(element, "pointed");
+                                    cJSON *ts = cJSON_GetObjectItem(element, "ts");
+
+                                    size_t address_len = strlen(address->valuestring);
+                                    size_t vaultaddress_len = strlen(vaultaddress->valuestring);
+
+                                    snprintf(tbuf, sizeof(tbuf)
+                                        , "%6d\t%6d\t%7s\t%4s\t%.4s...%.4s\t%.4s...%.4s\t%1.8f\t%7s\t\t%s\n"
+                                        , cJSON_IsNumber(parent) ? parent->valueint : -1
+                                        , cJSON_IsNumber(child) ? child->valueint : -1
+                                        , cJSON_IsNumber(charity) ? charity->valueint == 0 ? "NO":"YES" : "N/A"
+                                        , cJSON_IsNumber(automatic) ? automatic->valueint == 0 ? "NO":"YES" : "N/A"
+                                        , address->valuestring, address->valuestring + address_len - 4
+                                        , vaultaddress->valuestring, vaultaddress->valuestring + vaultaddress_len - 4
+                                        , cJSON_IsNumber(reward) ? reward->valuedouble : 0.0
+                                        , cJSON_IsNumber(pointed) ? pointed->valueint == 0 ? "NO":"YES" : "N/A"
+                                        , cJSON_IsString(ts) ? ts->valuestring : "N/A"
+                                    );
+
+                                    satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
+                                    neuron_count++;
+                                }
+                            }
+
+                            snprintf(tbuf, sizeof(tbuf), "\nNEURON '%s' HAS %d DELEGATED NEURONS\n", request->argv[3], neuron_count);
+                            satnow_cli_send_response(request->fd, CLI_MORE, tbuf);
+                        }
+                        satnow_cli_send_response(request->fd, CLI_MORE, "\n");
+                    }
+
+                    cJSON_Delete(json);
+                    json = NULL;
+
+                    if (session->host) {
+                        free(session->host);
+                        session->host = NULL;
+                    }
+                    if (session->pass) {
+                        free(session->pass);
+                        session->pass = NULL;
+                    }
+                    if (session->nickname) {
+                        free(session->nickname);
+                        session->nickname = NULL;
+                    }
+                    if (session->session) {
+                        free(session->session);
+                        session->session = NULL;
+                    }
+                    if (session->buffer) {
+                        free(session->buffer);
+                        session->buffer = NULL;
+                        session->buffer_len = 0;
+                    }
+                }
+            }
+            current = current->next;
+        }
+        satnow_repository_entry_list_free(list);
+        free(session);
+    }
+    satnow_cli_send_response(request->fd, CLI_DONE, "\n");
+    return 0;
+}
+
+static char *cli_neuron_pool_participants(struct satnow_cli_args *request) {
+    struct repository_entry *list = NULL;
+    struct neuron_session *session = NULL;
+
+    if (!satnow_repository_password_valid()) {
+        satnow_cli_request_repository_password(request->fd);
+    }
+
+    for (int i = 0; i < request->argc; i++) {
+        printf("ARG[%d]: %s\n", i, request->argv[i]);
+    }
+
+    /** neuron pool participants ( <host:ip> | <nickname> ) [json] */
+    if (request->argc < 4 || request->argc > 5) {
+        satnow_cli_send_response(request->fd, CLI_MORE, request->ref->syntax);
+        satnow_cli_send_response(request->fd, CLI_DONE, "\n");
+        return 0;
+    }
+
+    list = satnow_repository_entry_list();
+    if (list) {
+        struct repository_entry *current = list;
+        session = calloc(1, sizeof(*session));
+        session->buffer = NULL;
+        session->buffer_len = 0;
+
+        while (current) {
+#ifdef __DEBUG__
+            printf("Entry:\n");
+            printf("  Salt: ");
+            for (int i = 0; i < SALT_LEN; i++) printf("%02x", current->salt[i]);
+            printf("\n");
+            printf("  IV: ");
+            for (int i = 0; i < IV_LEN; i++) printf("%02x", current->iv[i]);
+            printf("\n");
+            printf("  Ciphertext length: %lu\n", current->ciphertext_len);
+#endif
+
+            if (current->plaintext) {
+                free(current->plaintext);
+                current->plaintext = NULL;
+            }
+            current->plaintext = malloc(current->ciphertext_len + 1);
+            if (!current->plaintext) {
+                printf("Out of memory\n");
+            }
+            else {
+                cJSON *json = NULL;
+
+                satnow_encrypt_ciphertext2text(current->ciphertext, (int)current->ciphertext_len, current->file_key, current->iv, current->plaintext, (int *)&current->plaintext_len);
+                current->plaintext[current->plaintext_len] = '\0';
+
+                json = cJSON_Parse((char *)current->plaintext);
+                if (!json) {
+                    fprintf(stderr, "Invalid JSON format.\n");
+                } else {
+                    const cJSON *json_host = cJSON_GetObjectItemCaseSensitive(json, "host");
+                    const cJSON *json_password = cJSON_GetObjectItemCaseSensitive(json, "password");
+                    const cJSON *json_nickname = cJSON_GetObjectItemCaseSensitive(json, "nickname");
+
+                    session->host = json_host && json_host->valuestring
+                        ? satnow_json_string_unescape(json_host->valuestring)
+                        : NULL;
+
+                    session->pass = json_password && json_password->valuestring
+                        ? satnow_json_string_unescape(json_password->valuestring)
+                        : NULL;
+
+                    session->nickname = json_nickname && json_nickname->valuestring
+                        ? satnow_json_string_unescape(json_nickname->valuestring)
+                        : NULL;
+
+                    if ((session->host && !strcasecmp(session->host, request->argv[3])) || (session->nickname && !strcasecmp(session->nickname, request->argv[3]))) {
+                        satnow_http_neuron_unlock(session);
+                        satnow_cli_send_response(request->fd, CLI_MORE, "Neuron Authenticated.\n");
+
+                        printf("satnow_http_neuron_proxy_parent_status(BEFORE) buffer len: %ld\n", session->buffer_len);
+                        satnow_http_neuron_pool_participants(session);
+                        satnow_cli_send_response(request->fd, CLI_MORE, "Neuron pool participants to follow:\n\n");
                         if (request->argc == 5 && !strcasecmp(request->argv[4], "json")) {
                             satnow_cli_send_response(request->fd, CLI_MORE, session->buffer);
                         } else {
