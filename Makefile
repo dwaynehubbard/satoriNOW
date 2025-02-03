@@ -3,11 +3,12 @@ CFLAGS = -Wall -Wextra -g -Og $(INC_DIR) -D__DEBUG__ -fPIC
 LDFLAGS = -L/opt/homebrew/lib -lcurl -lpthread -lcrypto -lssl -lcjson -ldl
 SATORINOW_SRC_DIR = src/satorinow
 SATORICLI_SRC_DIR = src/satoricli
-MODULES_DIR = modules
+MODULES_DIR = src/modules
 INC_DIR = -Isrc/include -I/opt/homebrew/include
 BUILD_DIR = build
 BIN_DIR = bin
-INSTALL_DIR = /usr/local/satori-now/bin
+INSTALL_DIR = /usr/local/satorinow/bin
+INSTALL_MODULE_DIR = $(INSTALL_DIR)/modules
 
 # Source files
 SATORINOW_SRC = $(SATORINOW_SRC_DIR)/main.c \
@@ -52,9 +53,11 @@ clean:
 install: all
 	@echo "Installing binaries to $(INSTALL_DIR)..."
 	@mkdir -p $(INSTALL_DIR)
+	@mkdir -p $(INSTALL_MODULE_DIR)
 	cp $(SATORINOW_BIN) $(SATORICLI_BIN) $(INSTALL_DIR)
+	cp $
 
 uninstall:
 	@echo "Uninstalling binaries from $(INSTALL_DIR)..."
-	rm -f $(INSTALL_DIR)/satori_now_daemon
-	rm -f $(INSTALL_DIR)/satori_now_cli
+	rm -f $(INSTALL_DIR)/satorinow
+	rm -f $(INSTALL_DIR)/satoricli
