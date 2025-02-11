@@ -27,10 +27,17 @@
 #include <pthread.h>
 #include <curl/curl.h>
 #include <sys/stat.h>
+#include <dlfcn.h>
+#include <dirent.h>
+#include <limits.h>
 #include <satorinow.h>
 #include "satorinow/cli.h"
 #include "satorinow/cli/cli_satori.h"
 #include "satorinow/repository.h"
+
+#define MODULES_DIR "./modules"
+
+typedef int (*module_func)();
 
 static char config_dir[PATH_MAX];
 static int do_shutdown = 0;
@@ -63,6 +70,86 @@ void satnow_shutdown(int signum) {
     printf("SatoriNOW shutting down\n");
     do_shutdown = TRUE;
 }
+
+/**
+ * Load and initialize modules from the modules directory
+ */
+void load_modules() {
+    DIR *dir = opendir(MODULES_DIR);
+    if (!dir) {
+        perror("opendir");
+        return;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strstr(entry->d_name, ".so")) {
+            char module_path[PATH_MAX];
+            snprintf(module_path, sizeof(module_path), "%s/%s", MODULES_DIR, entry->d_name);
+
+            void *handle = dlopen(module_path, RTLD_LAZY);
+            if (!handle) {
+                fprintf(stderr, "Error loading module %s: %s\n", module_path, dlerror());
+                continue;
+            }
+
+            module_func load_module = (module_func) dlsym(handle, "load_module");
+            if (!load_module) {
+                fprintf(stderr, "Module %s missing load_module function: %s\n", module_path, dlerror());
+                dlclose(handle);
+                continue;
+            }
+
+            if (load_module() != 0) {
+                fprintf(stderr, "Module %s failed to initialize\n", module_path);
+                dlclose(handle);
+                continue;
+            }
+
+            printf("Loaded module: %s\n", module_path);
+        }
+    }
+    closedir(dir);
+}
+
+/**
+ * Unload modules (gracefully shuts down each module)
+ */
+void unload_modules() {
+    DIR *dir = opendir(MODULES_DIR);
+    if (!dir) {
+        perror("opendir");
+        return;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strstr(entry->d_name, ".so")) {
+            char module_path[PATH_MAX];
+            snprintf(module_path, sizeof(module_path), "%s/%s", MODULES_DIR, entry->d_name);
+
+            void *handle = dlopen(module_path, RTLD_LAZY);
+            if (!handle) {
+                fprintf(stderr, "Error loading module %s: %s\n", module_path, dlerror());
+                continue;
+            }
+
+            module_func unload_module = (module_func) dlsym(handle, "unload_module");
+            if (!unload_module) {
+                fprintf(stderr, "Module %s missing unload_module function: %s\n", module_path, dlerror());
+                dlclose(handle);
+                continue;
+            }
+
+            unload_module();
+            dlclose(handle);
+            printf("Unloaded module: %s\n", module_path);
+        }
+    }
+    closedir(dir);
+}
+
+
 
 /**
  * int main(int argc, char *argv[])
@@ -102,6 +189,11 @@ int main() {
     satnow_repository_init(config_dir);
 
     /**
+     * Load additional modules
+     */
+    load_modules();
+
+    /**
      * Register Command Line Operations
      */
     satnow_register_core_cli_operations();
@@ -137,6 +229,7 @@ int main() {
     /**
      * Shutting down activities
      */
+    unload_modules();
     curl_global_cleanup();
     satnow_cli_stop();
     pthread_join(cli_thread, NULL);
