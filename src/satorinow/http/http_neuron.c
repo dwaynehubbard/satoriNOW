@@ -100,7 +100,6 @@ int satnow_http_neuron_unlock(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
     char cookie_file[PATH_MAX];
-    char response_file[PATH_MAX];
     CURL *curl;
     CURLcode result;
 
@@ -113,8 +112,6 @@ int satnow_http_neuron_unlock(struct neuron_session *session) {
         return -1;
     }
     snprintf(cookie_file, sizeof(cookie_file), "%s/%s-%ld.cookie", satnow_config_directory(), session->host, now);
-    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
-    printf("http_neuron_unlock: %s, %s\n", cookie_file, response_file);
 
     curl = curl_easy_init();
     if (curl) {
@@ -191,7 +188,6 @@ int satnow_http_neuron_unlock(struct neuron_session *session) {
 int satnow_http_neuron_mining_to_address(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
-    char response_file[PATH_MAX];
     CURL *curl;
     CURLcode result;
 
@@ -202,8 +198,6 @@ int satnow_http_neuron_mining_to_address(struct neuron_session *session) {
     }
 
     snprintf(url, sizeof(url), "http://%s/mining/to/address", session->host);
-    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
-    printf("satnow_http_neuron_mining_to_address: %s, %s\n", session->session, response_file);
 
     curl = curl_easy_init();
     if (curl) {
@@ -242,7 +236,6 @@ int satnow_http_neuron_mining_to_address(struct neuron_session *session) {
 int satnow_http_neuron_pool_participants(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
-    char response_file[PATH_MAX];
     CURL *curl;
     CURLcode result;
 
@@ -253,8 +246,6 @@ int satnow_http_neuron_pool_participants(struct neuron_session *session) {
     }
 
     snprintf(url, sizeof(url), "http://%s/pool/participants", session->host);
-    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
-    printf("satnow_http_neuron_pool_participants: %s, %s\n", session->session, response_file);
 
     curl = curl_easy_init();
     if (curl) {
@@ -298,7 +289,6 @@ int satnow_http_neuron_pool_participants(struct neuron_session *session) {
 int satnow_http_neuron_proxy_parent_status(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
-    char response_file[PATH_MAX];
     CURL *curl;
     CURLcode result;
 
@@ -309,8 +299,6 @@ int satnow_http_neuron_proxy_parent_status(struct neuron_session *session) {
     }
 
     snprintf(url, sizeof(url), "http://%s/proxy/parent/status", session->host);
-    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
-    printf("http_neuron_proxy_parent_status: %s, %s\n", session->session, response_file);
 
     curl = curl_easy_init();
     if (curl) {
@@ -350,7 +338,6 @@ int satnow_http_neuron_proxy_parent_status(struct neuron_session *session) {
 int satnow_http_neuron_system_metrics(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
-    char response_file[PATH_MAX];
     CURL *curl;
     CURLcode result;
 
@@ -361,8 +348,6 @@ int satnow_http_neuron_system_metrics(struct neuron_session *session) {
     }
 
     snprintf(url, sizeof(url), "http://%s/system_metrics", session->host);
-    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
-    printf("http_neuron_system_metrics: %s, %s\n", session->session, response_file);
 
     curl = curl_easy_init();
     if (curl) {
@@ -403,7 +388,6 @@ int satnow_http_neuron_system_metrics(struct neuron_session *session) {
 int satnow_http_neuron_ping(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
-    char response_file[PATH_MAX];
     CURL *curl;
     CURLcode result;
 
@@ -414,8 +398,6 @@ int satnow_http_neuron_ping(struct neuron_session *session) {
     }
 
     snprintf(url, sizeof(url), "http://%s/ping", session->host);
-    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
-    printf("satnow_http_neuron_ping: %s, %s\n", session->session, response_file);
 
     curl = curl_easy_init();
     if (curl) {
@@ -456,7 +438,6 @@ int satnow_http_neuron_ping(struct neuron_session *session) {
 int satnow_http_neuron_stats(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
-    char response_file[PATH_MAX];
     CURL *curl;
     CURLcode result;
 
@@ -467,8 +448,6 @@ int satnow_http_neuron_stats(struct neuron_session *session) {
     }
 
     snprintf(url, sizeof(url), "http://%s/fetch/wallet/stats/daily", session->host);
-    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
-    printf("http_neuron_stats: %s, %s\n", session->session, response_file);
 
     curl = curl_easy_init();
     if (curl) {
@@ -508,7 +487,6 @@ int satnow_http_neuron_stats(struct neuron_session *session) {
 int satnow_http_neuron_vault(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
-    char response_file[PATH_MAX];
     CURL *curl;
     CURLcode result;
 
@@ -519,8 +497,6 @@ int satnow_http_neuron_vault(struct neuron_session *session) {
     }
 
     snprintf(url, sizeof(url), "http://%s/vault", session->host);
-    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
-    printf("satnow_http_neuron_vault: %s, %s\n", session->session, response_file);
 
     curl = curl_easy_init();
     if (curl) {
@@ -561,7 +537,6 @@ int satnow_http_neuron_vault_transfer(struct neuron_session *session, char *amou
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
     char post_data[1024];
-    char response_file[PATH_MAX];
     CURL *curl;
     CURLcode result;
 
@@ -572,19 +547,9 @@ int satnow_http_neuron_vault_transfer(struct neuron_session *session, char *amou
     }
 
     snprintf(url, sizeof(url), "http://%s/send_satori_transaction_from_vault/main", session->host);
-    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
-    /*
-    snprintf(post_data, sizeof(post_data), "address=%s&amount=%s&sweep=false&csrf_token=%s&csrf_token=%s&submit=Send"
-             , wallet
-             , amount_str
-             , session->csrf_token
-             , session->csrf_token);
-
-     */
     snprintf(post_data, sizeof(post_data), "address=%s&amount=%s&sweep=false&submit=Send"
              , wallet
              , amount_str);
-    printf("satnow_http_neuron_vault_transfer: %s, %s, %s\n", session->session, response_file, post_data);
 
     curl = curl_easy_init();
     if (curl) {
@@ -625,7 +590,6 @@ int satnow_http_neuron_decrypt_vault(struct neuron_session *session) {
     char url[URL_MAX];
     char url_data[URL_DATA_MAX];
     char post_data[1024];
-    char response_file[PATH_MAX];
     CURL *curl;
     CURLcode result;
 
@@ -636,9 +600,7 @@ int satnow_http_neuron_decrypt_vault(struct neuron_session *session) {
     }
 
     snprintf(url, sizeof(url), "http://%s/decrypt/vault", session->host);
-    snprintf(response_file, sizeof(response_file), "%s/%s-%ld.response", satnow_config_directory(), session->host, now);
     snprintf(post_data, sizeof(post_data), "{\"password\":\"%s\"}", session->pass);
-    printf("satnow_http_neuron_decrypt_vault: %s, %s, %s\n", session->session, response_file, post_data);
 
     curl = curl_easy_init();
     if (curl) {
