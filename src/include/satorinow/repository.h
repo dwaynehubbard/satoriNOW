@@ -29,21 +29,68 @@
 #define REPOSITORY_MARKER "0xDEADBEEF"
 #define REPOSITORY_MARKER_LEN (sizeof(REPOSITORY_MARKER) - 1)
 
+/**
+ * Initialize the SatoriNOW repository
+ * @param config_dir
+ */
 void satnow_repository_init(const char *config_dir);
+
+/**
+ * Shutdown the SatoriNOW server
+ */
 void satnow_repository_shutdown();
 
+/**
+ * Register Command Line Operations with the SatoriNOW server
+ * @return
+ */
 int satnow_register_repository_cli_operations();
+
+/**
+ * Append data to the SatoriNOW repository
+ * @param buffer
+ * @param length
+ */
 void satnow_repository_entry_append(const char *buffer, int length);
+
+/**
+ * Retrieve a linked-list of repository contents
+ * @return
+ */
 struct repository_entry *satnow_repository_entry_list();
+
+/**
+ * Free the linked-list of repository contents
+ * @param list
+ */
 void satnow_repository_entry_list_free(struct repository_entry *list);
+
+/**
+ * Verify if the repository password candidate is valid
+ * @return
+ */
 int satnow_repository_password_valid();
 
+/**
+ * Check if the SatoriNOW repository exists
+ * @return
+ */
 int satnow_repository_exists();
+
+/**
+ * Set the SatoriNOW repository password
+ * @param pass
+ */
 void satnow_repository_password(const char *pass);
 
 /**
  * The repository stores data using the following format:
  * <salt><iv><ciphertext_length><ciphertext>
+ * where <ciphertext> is JSON containing the following fields:
+ *      entry_type
+ *      host
+ *      password
+ *      nickname
  */
 struct repository_entry {
     unsigned char salt[SALT_LEN];
