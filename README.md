@@ -1,4 +1,4 @@
-# satoriNOW
+#S satoriNOW
 
 This project is a CLI application intended to offer command line functionality to users of the Satori Network.
 
@@ -114,7 +114,7 @@ Remember to store your SatoriNOW repository password in a secure location.
 Neuron Authenticated.
 Neuron wallet addresses to follow:
 
-'satori-001' is mining to wallet address: EXeuBYgrq2pheyw1sorfztYhnkrRKB1pfE
+'satori-001' is mining to wallet address: EXTy...pHfE
 ```
 
 ### NEURON PARENT STATUS
