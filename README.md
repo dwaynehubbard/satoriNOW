@@ -43,7 +43,6 @@ help				- Display supported commands
 neuron addresses		- Display the specified neuron's wallet addresses
 neuron delegate			- Display the specified neuron's delegate status
 neuron parent status		- Display the specified neuron's parent status report
-neuron parent status		- Display the specified neuron's parent status report
 neuron ping			- Ping the specified neuron
 neuron pool participants 	- Display the specified neuron's pool participants
 neuron register 		- Register a protected neuron.
