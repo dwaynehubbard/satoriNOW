@@ -36,6 +36,7 @@ struct neuron_session {
 
 int satnow_http_neuron_mining_to_address(struct neuron_session *session);
 int satnow_http_neuron_decrypt_vault(struct neuron_session *session);
+int satnow_http_neuron_delegate(struct neuron_session *session);
 int satnow_http_neuron_ping(struct neuron_session *session);
 int satnow_http_neuron_pool_participants(struct neuron_session *session);
 int satnow_http_neuron_proxy_parent_status(struct neuron_session *session);
