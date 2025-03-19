@@ -39,17 +39,23 @@ to display the list of available operations.
 ```
 $ satoricli help
 
-help - Display supported commands
-neuron parent status - Display the specified neuron's parent status report
-neuron register - Register a protected neuron.
-neuron stats - Display neuron stats
-neuron system metrics - Display neuron system metrics
-neuron unlock - Generate an authenticated session on the specified neuron.
-neuron vault transfer - Transfer the specified amount of satori from the vault to the specified wallet address
-repository backup - Backup the repository
-repository password - Change the repository password
-repository show - Display the contents of the repository
-shutdown - Shutdown the SatoriNOW daemon
+help				- Display supported commands
+neuron addresses		- Display the specified neuron's wallet addresses
+neuron delegate			- Display the specified neuron's delegate status
+neuron parent status		- Display the specified neuron's parent status report
+neuron parent status		- Display the specified neuron's parent status report
+neuron ping			- Ping the specified neuron
+neuron pool participants 	- Display the specified neuron's pool participants
+neuron register 		- Register a protected neuron.
+neuron stats 			- Display neuron stats
+neuron system metrics 		- Display neuron system metrics
+neuron unlock 			- Generate an authenticated session on the specified neuron.
+neuron vault 			- Access the specified neuron's vault and display the CSRF token
+neuron vault transfer 		- Transfer the specified amount of satori from the vault to the specified wallet address
+repository backup 		- Backup the repository
+repository password 		- Change the repository password
+repository show 		- Display the contents of the repository
+shutdown 			- Shutdown the SatoriNOW daemon
 ```
 
 ## REPOSITORY
@@ -114,7 +120,25 @@ Remember to store your SatoriNOW repository password in a secure location.
 Neuron Authenticated.
 Neuron wallet addresses to follow:
 
-'satori-001' is mining to wallet address: EXTy...pHfE
+'satori-001' is mining to wallet address: EXe...1gfR
+```
+
+### NEURON DELEGATE INFORMATION
+
+Use:
+
+> satoricli neuron delegate _nickname_ [json]
+
+to display the current delegate information for the specified neuron. Use the option 'json' argument
+to display the raw JSON returned from the specified neuron.
+
+```
+$ satoricli neuron delegate satori-087
+
+Neuron delegate to follow:
+
+            NICKNAME	                             WALLET	                              VAULT	   OFFER	ACCEPTING	ALIAS
+          satori-087	 ETU972nu9naUffZuUkVFoHGpq2AZJdBjFi	 ETU972nu9naUffZuUkVFoHGpq2AZJdBjFi	50.00000000	       NO	public neuron pool
 ```
 
 ### NEURON PARENT STATUS
@@ -131,19 +155,19 @@ Neuron Authenticated.
 Neuron parent status to follow:
 
 PARENT	 CHILD	CHARITY	AUTO	    WALLET	     VAULT	  REWARD	POINTED		DATE
- 36517	731078	     NO	  NO	EWKF...T3xj	EUPc...FnJz	0.00000000	    YES		2024-12-11 04:38:52.241291+00:00
- 36517	776732	     NO	  NO	EV4e...THPC	EMuQ...6cpy	0.05762304	    YES		2025-01-17 00:26:15.725830+00:00
- 36517	742754	     NO	  NO	ERC1...9Skr	EeRP...vqeQ	0.05793529	    YES		2024-12-31 01:50:36.573821+00:00
- 36517	731075	     NO	  NO	ETTY...CG65	EYB2...jZDA	0.05782454	    YES		2024-12-11 04:04:00.604563+00:00
- 36517	741079	     NO	  NO	EHAJ...uuHg	EWus...7pJM	0.05847362	    YES		2024-12-17 15:46:51.311670+00:00
+ 36517	731078	     NO	  NO	EWKF...T2xk	EUPc...FnJz	0.00000000	    YES		2024-12-11 04:38:52.241291+00:00
+ 36517	776732	     NO	  NO	EV4e...NH4C	EMuQ...6cpy	0.05762304	    YES		2025-01-17 00:26:15.725830+00:00
+ 36517	742754	     NO	  NO	ERC1...9e8r	EeRP...vqeQ	0.05793529	    YES		2024-12-31 01:50:36.573821+00:00
+ 36517	731075	     NO	  NO	ETTY...Cc65	EYB2...jZDA	0.05782454	    YES		2024-12-11 04:04:00.604563+00:00
+ 36517	741079	     NO	  NO	EHAJ...uuyg	EWus...7pJM	0.05847362	    YES		2024-12-17 15:46:51.311670+00:00
  . . .
- 36517	403071	     NO	  NO	Ecyq...vgji	EXim...Jy7V	0.06010722	    YES		2024-10-25 05:41:16.628615+00:00
- 36517	686802	     NO	  NO	EQSd...jd4y	Ecb1...keqX	0.06010722	    YES		2024-11-13 03:41:35.127929+00:00
- 36517	687051	     NO	  NO	ELo2...UVWe	EaYo...pGes	0.06010722	    YES		2024-11-13 04:24:26.517365+00:00
- 36517	441369	     NO	  NO	Ebzb...D2hd	ENUR...J9SE	0.06010722	    YES		2024-10-25 06:00:05.547183+00:00
- 36517	702652	     NO	  NO	EHBh...NZam	EPeg...FZhN	0.06010722	    YES		2024-11-19 04:58:31.925626+00:00
- 36517	687080	     NO	  NO	EVmg...cMF9	EfdU...wn6p	0.06010722	    YES		2024-11-13 04:46:17.533370+00:00
- 36517	403327	     NO	  NO	EfgR...95fy	ELMd...V9Q1	0.06010722	    YES		2024-10-25 05:32:36.711479+00:00
+ 36517	403071	     NO	  NO	Ecyq...vl5i	EXim...Jy7V	0.06010722	    YES		2024-10-25 05:41:16.628615+00:00
+ 36517	686802	     NO	  NO	EQSd...jvoy	Ecb1...k8qX	0.06010722	    YES		2024-11-13 03:41:35.127929+00:00
+ 36517	687051	     NO	  NO	ELo2...Uuve	EaYo...p6es	0.06010722	    YES		2024-11-13 04:24:26.517365+00:00
+ 36517	441369	     NO	  NO	Ebzb...D68d	ENUR...J9uE	0.06010722	    YES		2024-10-25 06:00:05.547183+00:00
+ 36517	702652	     NO	  NO	EHBh...NZmm	EPeg...FZpN	0.06010722	    YES		2024-11-19 04:58:31.925626+00:00
+ 36517	687080	     NO	  NO	EVmg...coF9	EfdU...w86p	0.06010722	    YES		2024-11-13 04:46:17.533370+00:00
+ 36517	403327	     NO	  NO	EfgR...9afy	ELMd...V9w1	0.06010722	    YES		2024-10-25 05:32:36.711479+00:00
 
 NEURON 'satori-001' HAS 36 DELEGATED NEURONS
 ```
@@ -234,7 +258,7 @@ Use:
 to transfer 0.01 $SATORI from the 'satori-001' vault to the specified destination wallet
 
 ```
-satoricli neuron vault transfer 0.01 satori EUR...8BFh satori-001
+satoricli neuron vault transfer 0.01 satori EUv...89nP satori-001
 
 ```
 
